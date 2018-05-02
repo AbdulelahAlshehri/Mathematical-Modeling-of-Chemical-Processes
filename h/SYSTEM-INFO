@@ -1,0 +1,50 @@
+Created on: Sat Sep  3 03:32:06 2016
+Name: 
+Userid = aalshehr@andrew.cmu.edu
+Email: Bood@CHE16-034
+System name: CHE16-034
+windows-nt
+Windows IP Configuration
+
+
+Wireless LAN adapter Wireless Network Connection 6:
+
+   Media State . . . . . . . . . . . : Media disconnected
+   Connection-specific DNS Suffix  . : 
+
+Wireless LAN adapter Wireless Network Connection 5:
+
+   Media State . . . . . . . . . . . : Media disconnected
+   Connection-specific DNS Suffix  . : 
+
+Wireless LAN adapter Wireless Network Connection 4:
+
+   Connection-specific DNS Suffix  . : hsd1.pa.comcast.net
+   IPv6 Address. . . . . . . . . . . : 2601:546:c100:1f::a6fb
+   IPv6 Address. . . . . . . . . . . : 2601:546:c100:1f:49b6:46fc:fec:ba7e
+   Temporary IPv6 Address. . . . . . : 2601:546:c100:1f:8473:81d8:132b:f7a5
+   Link-local IPv6 Address . . . . . : fe80::49b6:46fc:fec:ba7e%21
+   IPv4 Address. . . . . . . . . . . : 10.0.0.138
+   Subnet Mask . . . . . . . . . . . : 255.255.255.0
+   Default Gateway . . . . . . . . . : fe80::48f7:c0ff:fe68:374%21
+                                       10.0.0.1
+
+Ethernet adapter Local Area Connection 3:
+
+   Media State . . . . . . . . . . . : Media disconnected
+   Connection-specific DNS Suffix  . : router829400.com
+
+Tunnel adapter isatap.{AFC742CA-F43E-45A3-8450-0434F88CF796}:
+
+   Media State . . . . . . . . . . . : Media disconnected
+   Connection-specific DNS Suffix  . : 
+
+Tunnel adapter isatap.hsd1.pa.comcast.net:
+
+   Media State . . . . . . . . . . . : Media disconnected
+   Connection-specific DNS Suffix  . : hsd1.pa.comcast.net
+
+Tunnel adapter isatap.{F9302427-A93D-495E-A082-B0C89CFFF600}:
+
+   Media State . . . . . . . . . . . : Media disconnected
+   Connection-specific DNS Suffix  . : 

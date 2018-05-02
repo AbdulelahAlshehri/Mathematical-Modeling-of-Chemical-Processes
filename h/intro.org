@@ -1,0 +1,6648 @@
+#+ASSIGNMENT: Exam 1 Review
+#+POINTS: 2
+#+CATEGORY: participation
+#+RUBRIC: (("participation" . 1.0))
+#+DUEDATE: <2016-09-01 Thu>
+
+elisp:org-toggle-latex-overlays
+elisp:global-linum-mode
+M-x org-babel-async-execute:python
+M-x pylint
+
+#+BEGIN_SRC emacs-lisp
+(cua-mode t)
+#+END_SRC
+
+#+RESULTS:
+: t
+
+
+* Useful stuff
+Cut: C-w
+Copy: A-w
+Paste: C-y
+Undo: C-/
+(If you prefer Microsoft's defaults of C-x, C-c, C-v, and C-z, see below for how to make this change permanent)
+C-g: End current process
+Split screen vertically: C-x 3
+Focus on only selected buffer: C-x 1
+Undotree (undo a lot of stuff): C-x u
+Select region: C-space (then press the up or down arrows)
+delete everything in the line after the cursor: C-k
+Toggle images in org-mode: C-c C-x C-v
+
+
+* Batch
+
+** Constant N
+*** Solve for k
+**** General Solution
+The first step to solving this problem is to write the batch reactor material balance equation in terms of concentration  
+
+\(\frac{dC_A}{dt} = r_A  = -k C_A^{1.5} \)
+
+Then, the equation is separated into two parts
+
+\(\frac{dC_A}{C_A^{1.5}} = -k dt \)
+
+Next, python is used  to integrate both sides of the equation 
+
+\(\int_{C_{A0}}^{C_Af} \frac{dC_A}{C_A^{1.5}}  = \int_{t=0}^{tf} -k  dt \) 
+
+where k is 
+
+\(\ k = -\frac{\int_{C_{A0}}^{C_Af} \frac{dC_A}{C_A^{1.5}} }{\int_{t=0}^{tf} dt} \)
+**** Python
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import quad
+from scipy.optimize import fsolve
+
+Na0 = 5      #mol
+Na  = 2      #mol
+V   = 1      #L
+Ca0 = Na0/V  #mol/L
+print(Ca0)
+Caf = Na/V   #mol/L 
+print(Caf)
+tf  = 2      #hour
+
+def integrand1 (Ca):
+    return 1.0/(Ca**1.5)
+
+def integrand2 (t): #if x = 1 write x
+    return t
+
+def func(k):
+    I1, e1 = quad(integrand1, Ca0, Caf)
+    I2, e2 = quad(integrand2, 0, tf)
+    return I1 + k* I2
+
+guess = 0.1
+sol   = fsolve(func, guess)
+print('k = {0:1.7f}  L^{{1/2}}/mol^{{1/2}}/hr'.format(float(sol)))
+
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+5.0
+2.0
+k = 0.2598932  L^{1/2}/mol^{1/2}/hr
+:END:
+
+*** Moles left after t==
+**** General Solution
+Here, we have an ordinary differential equation with an initial condition. To determine the the number of moles B present at t=5, the equation below is  integrated from t=0 to t=5.
+
+\(\frac{dC_A}{dt} = r_A  = -k C_A^{1.5} \)
+
+Then, we solve for Nb
+
+\( N_B = (C_A - C_{A0}) V \frac{b}{a} \)
+
+where a and b are the stoichiometric coefficient of A and B, respectively. 
+**** Python 
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy. integrate import odeint
+
+k   = 0.259893  #hour
+Na0 = 5         #mol
+V   = 1         #L
+Ca0 = Na0/V     #mol/L
+#stoichiometric coefficient for a and b 
+a= -1
+b = 1
+
+def ode(Ca, t):
+    dCadt = - k * Ca**1.5
+    return dCadt
+
+tspan = np.linspace(0, 5) #hours
+sol   = odeint(ode, Ca0, tspan)
+
+NB    = (sol-Ca0)*V*(b/a)
+
+print('N_B present in the reactor at t = 5 hours is  {:1.2f} moles'.format(NB[-1,0]))
+  
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+N_B present in the reactor at t = 5 hours is  4.17 moles
+:END:
+*** General batch example and plot 
+
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy. integrate import odeint
+import matplotlib.pyplot as plt
+
+k   = 0.23  #hour
+Ca0 = 2     #mol/L
+#stoichiometric coefficient for a and b 
+
+
+def ode(Ca, t):
+    dCadt = - k * Ca
+    return dCadt
+
+tspan = np.linspace(0, 1) #hours
+sol   = odeint(ode, Ca0, tspan)
+
+print('N_B present in the reactor at t = 5 hours is  {0} moles'.format(sol[-1]))
+
+plt.plot(tspan, sol)
+plt.xlabel('Time (hours)')
+plt.ylabel('$C_A$ (mol / L)')
+plt.savefig('plott.png')
+
+  
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+N_B present in the reactor at t = 5 hours is  [ 1.58906723] moles
+:END:
+[[./plott.png]]
+** Changing N
+s
+
+* CSTR
+** Constant N
+*** General Caexit CSTR
+#+BEGIN_SRC python
+from scipy.optimize import fsolve
+
+k = 0.23   # 1/hr
+Fa0 = 1.0  # mol /hr
+v0 = 2.5   # L /hr
+V = 10     # L
+
+def func(Ca_exit):
+    ra = -k * Ca_exit
+    Fa = v0 * Ca_exit
+    return Fa0 - Fa + V * ra #it ignores the second return 
+import numpy as np
+import matplotlib.pyplot as plt
+#maximum Ca is 0.4 Fa/V, it's time-consuming (you have to think about the max..etc)
+Ca = np.linspace(0, 0.4)
+Z=[func(c) for c in Ca]
+plt.plot(Ca, Z)
+plt.xlabel('Ca_exit')
+plt.ylabel('func')
+plt.savefig('ploot.png')
+
+
+guess = 1.0  # mol / L #if it is not a line, guess carefully!!
+ans, = fsolve(func, guess)  # note the comma after ans. That "unpacks" the array
+
+print('Ca_exit = {0:1.5f} mol/L'.format(ans))
+#+END_SRC
+
+#+RESULTS:
+: Ca_exit = 0.20833 mol/L
+
+[[./ploot.png]]
+*** Conversion for different v values (for loop)
+**** General solution
+Solving the problem starts by writing the steady state  material balance equation: 
+
+In   -   out   -   consumption   = 0
+
+\( F_{A0} - v_0 C_{A, exit} + V  r_A =0\)
+
+
+Where \(F_{A0}\) can be expressed as
+ 
+\( F_{A0} =  C_{A, 0} v_0\)
+
+
+and \(r_A\)
+
+\( r_A =  -k C_{A, exit}^2\)
+
+
+The material balance equation \(f(C{A,exit})\) can be  rewritten as  
+
+\( C_{A, 0} v_0 - v_0 C_{A, exit} - V  k C_{A, exit}^2 =0\)
+
+
+Now, we need to solve for the nonlinear equation above to determine the conversion for different values of flow rate. The conversion for a CSTR can be expressed in to different forms that will yield the same values. The first form is valid for all flow systems: 
+
+\( X = \frac{F_{A, 0}-F_{A_exit}}{F_{A, 0}}\)
+
+
+since\(v_0= v_{exit}\), it can be expressed in terms of concentration
+
+\(X = \frac{C_{A, 0}-C_{A_exit}}{C_{A, 0}}\)
+
+
+The second form is derived from the reactor design equation for a CSTR: 
+
+\( X = \frac{- r_A V }{C_{A, 0} v_0}\)
+
+**** Python
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import fsolve
+
+v = np.linspace(50, 200)  # L/hr
+Ca0 = 3  # mol/L
+V = 200  # L
+Fa0 = Ca0 * v  # mol/hr
+k = 0.05  # L/mol/hr
+Conversion = []
+for i in range(50):
+
+    def M(Ca):
+        return -V * k * Ca**2 - v[i] * Ca + v[i] * Ca0
+
+    Ca_exit = fsolve(M, 2.0)
+
+    X = (-Ca_exit + Ca0) / Ca0
+
+    Conversion.append(X)
+
+plt.plot(v, Conversion)
+plt.xlabel(' flow rate (L/hr)')
+plt.ylabel(' Conversion X')
+plt.savefig('Conv.png')
+A = Conversion[0]
+print(
+    'As shown in the graph below, it is not possible to achieve a conversion of 50% over the entire operating range of the pump. The highest possible conversion is X= {0:1.3f} at a flow rate of {1} L/hr. The conversion decreases as the flow rate increases. '.format(A[0], v[0]))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+As shown in the graph below, it is not possible to achieve a conversion of 50% over the entire operating range of the pump. The highest possible conversion is X= 0.297 at a flow rate of 50.0 L/hr. The conversion decreases as the flow rate increases. 
+:END:
+[[./Conv.png]]
+
+
+* PFR
+** General PFR Caexit
+#+BEGIN_SRC python
+from scipy.integrate import odeint
+
+Ca0 = 3.0  # mol / L
+v0 = 10.0  # volumetric flowrate L/min
+k = 0.23   # rate constant 1/min
+
+def ode(Fa, V):
+    Ca = Fa / v0
+    ra = - k * Ca  
+    return ra
+
+Vspan = [0,10, 20, 30, 50, 100] # reactor volume
+import numpy as np
+Vspan = np.linspace(0,100)#it does not matter unless you want to plot it
+sol = odeint(ode, Ca0 * v0, Vspan)
+Fa_exit = sol[-1, 0] # last row, column 0
+
+print('Exit concentration = {0:1.4f} mol/L'.format(Fa_exit / v0))
+#+END_SRC
+
+#+RESULTS:
+: Exit concentration = 0.3008 mol/L
+
+
+
+** Volume for Certain Concentration
+*** ODE solution and plt
+
+#+BEGIN_SRC python
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+Ca0 = 3.0 # mol / L
+v0 = 10.0 # L / min
+k = 0.23  # 1/min
+
+def ode(Fa, V):
+    Ca = Fa / v0
+    return -k * Ca
+
+Vspan = np.linspace(0, 200) # volumes to integrate over
+
+sol = odeint(ode, Ca0 * v0, Vspan)
+
+plt.plot(Vspan, sol/v0)
+plt.xlabel('Volume (L)')
+plt.ylabel('$C_A$ (mol/L)')
+plt.savefig('pfrv.png')
+#+END_SRC
+
+#+RESULTS:
+
+[[./pfrv.png]]
+*** Numerical soln
+**** Quad
+#+BEGIN_SRC python
+from scipy.integrate import quad
+from scipy.optimize import fsolve
+
+k = 0.23        # 1/min
+nu = 10         # L/min
+Ca0 = 3.0       # mol / L
+Fa0 = Ca0 * nu
+Fa = 0.30 * nu
+
+def integrand1(Fa):
+    return 1.0 / Fa
+
+def integrand2(V):
+    return -k / nu
+
+def func(V):
+    I1, e1 = quad(integrand1, Fa0, Fa)#I1, Integral value and e1, an estimate of the error 
+    I2, e2 = quad(integrand2, 0, V)
+    return I1 - I2
+
+guess = 120 # Liters (value of V)
+sol = fsolve(func, guess)
+print('Volume = {0:1.2f}'.format(float(sol)))
+#+END_SRC
+
+#+RESULTS:
+: Volume = 100.11
+
+**** Event 
+#+BEGIN_SRC python :results org drawer
+import numpy as np
+from pycse import odelay
+
+Ca0 = 3.0  # mol / L
+v0 = 10.0  # L / min
+k = 0.23   # 1 / min
+
+Fa_Exit = 0.3 * v0
+
+def ode(Fa, V):
+    Ca = Fa / v0
+    return -k * Ca
+
+def event1(Fa, V):
+    isterminal = True
+    direction = 0
+    value = Fa - Fa_Exit
+    return value, isterminal, direction
+
+Vspan = np.linspace(0, 200) # L
+
+#V, F, TE, YE, IE = odelay(ode, Ca0 * v0, Vspan, events=[event1])
+V, F, TE, YE, _ = odelay(ode, Ca0 * v0, Vspan, events=[event1]) #_ IDK what should be there
+ #you dont need to put it in that order if you define everything i.e func=ode
+print('Solution is at {0} L'.format(V[-1]))
+import matplotlib.pyplot as plt
+import pycse.orgmode as org
+
+plt.plot(V, F)
+org.figure(plt.savefig('examp.png'))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+Solution is at 100.11242229762259 L
+[[file:examp.png]]
+:END:
+** Changing Number of Moles  
+The reaction \(A + B \rightarrow 3C\) occurs at a rate of \(r = k C_A C_B\). Given the following data:
+- plot molar flow of each species as function of volume in the reactor 
+- Exit flow rate of each species
+- Exit volumetric flow
+*** General solution
+For this problem the main equation that needs to be solved is the mole balance for a plug flow reactor, which can be defined as
+
+\( \frac{dF_A}{dV} = r_A \) 
+
+where:
+
+(1) The rate is given as:
+
+ \( r_A = k C_A C_B\)
+
+  
+
+(2) Since the number of moles is changing, the concentration is defined as 
+
+\( C_j = \frac{F_j}{\nu} \)
+
+This equation is used to calculate the initial molar flow rate of B, and the concentrations of A and B as volume changes.
+
+
+
+(3) The molar flow rates are computed using the reaction extent:
+
+$F_j = F_{j0} + \xi \alpha_j$.
+
+It should be noted that the extent is limited by the reactant that disappears first, which is A in this case. A and B have the same stoichiometric coefficient but the concentration of B is double that of A. That indicates that A is the limiting reactant.
+
+\(\xi = \frac{F_a - F_{a0}}{a} \)
+
+For each \(\xi\) consumed of A, \(\xi\) consumed of B and \(3\xi\) of C are produced.
+
+
+
+(4) The changing volumetric flow rate is computed using the following 
+
+\(\nu = \frac{\nu_0 * \sum  F_j}{\sum F_{j0}}\)
+
+
+The equations above are used to solve for Fa in the integral.
+
+*** Python
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+
+k    = 40.0     # L / mol / hr
+Ca0  = 0.01     # mol / L
+Cb0  = 0.02     # mol / L
+Fa0  = 15       # mol / hr
+V    = 800      # L
+v0   = Fa0/Ca0  # L/hr
+Fb0  = v0*Cb0   #mol/hr
+
+
+def dFadV(Fa, V):
+    xi = (Fa - Fa0)/-1 #reaction extent
+    Fb = Fb0 + xi*-1
+    Fc = xi*3
+    Ft = Fa+ Fb +Fc
+    v  = v0 *Ft/(Fa0+Fb0)
+
+    Ca = Fa/v
+    Cb = Fb/v
+    ra = - k *Ca*Cb
+    return ra
+
+#Solving for Fa
+Vspan = np.linspace(0, V)
+sol   = odeint(dFadV, Fa0, Vspan)
+
+#Solving Fb, Fc, and Ft
+xi      = (sol - Fa0)/-1 #reaction extent
+Fb      = Fb0 + xi*-1
+Fc      = xi*3
+Ft_exit = sol[-1] + Fb[-1] + Fc[-1]
+
+#Calculate v_exit
+v_exit  = v0*(Ft_exit/(Fa0+Fb0))
+
+#1)plotting the Flow rates as function of volume of PFR
+plt.plot(Vspan, sol, Vspan, Fb, Vspan, Fc )
+plt.xlabel('Volume (L)')
+plt.ylabel('F (mol / hr)')
+plt.title(' Flow Rates of Species  vs.  Volume of PFR')
+plt.legend( ['Fa',  'Fb' , 'Fc'], loc = 'lower center' )
+plt.savefig('plottyplot.png')
+
+print('''2) For a 800-L PFR, the mole flow rate of species exiting the reactor are estimated to be:
+Fa_exit = {0:1.3f} mol/hr
+Fb_exit = {1:1.3f} mol/hr
+Fc_exit = {2:1.3f} mol/hr
+'''.format(sol[-1][0], Fb[-1][0], Fc[-1][0] ))
+
+print('3) The exit flow rate was found to be v_exit = {0:1.3f} L/hr'.format(v_exit[0]))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+2) For a 800-L PFR, the mole flow rate of species exiting the reactor are estimated to be:
+Fa_exit = 10.539 mol/hr
+Fb_exit = 25.539 mol/hr
+Fc_exit = 13.382 mol/hr
+
+3) The exit flow rate was found to be v_exit = 1648.694 L/hr
+:END:
+
+[[./plottyplot.png]]
+** Changing number of moles and inert
+This is a previous quiz from a past year. As you work it out, consider that you would only have about 20 minutes to complete this. 
+
+The gas phase reaction $\ce{A + 2B -> 2D}$ is carried out in an isothermal, plug-flow reactor at 5 atm. Species A, B and an inert I is fed to the reactor at 50 L/min at 328 K. The mole fraction of the inlet streams are:
+
+| x_A | 0.2 |
+| x_B | 0.5 |
+| x_I | 0.3 |
+
+The reaction rate is $r = 2.5 C_A^{0.5} C_B$ mol/(L min)
+
+a) Plot the volumetric flow in the reactor as a function of the reactor volume from V = 0L to 50L. Comment on whether your result makes sense.
+
+b) Determine the exit conversion of A.
+
+
+*** Equations involved in solving the problem
+For this problem the main equation that needs to be solved is the mole balance for a plug flow reactor, which can be defined as
+
+\( \frac{dF_A}{dV} = r_A \) 
+
+where:
+
+(1) The rate is given as:
+
+ \( r_A = 2.5  C_A^{0.5} C_B\)
+
+  
+
+(2) Since the number of moles is changing, the concentration is defined as 
+\( C_j = \frac{F_j}{\nu} \)
+
+This equation is used to calculate the initial molar flow rate of B, and the concentrations of A and B as volume changes.
+
+
+
+(3) The molar flow rates are computed using the reaction extent:
+
+$F_j = F_{j0} + \xi \alpha_j$.
+
+It should be noted that the extent is limited by the reactant that disappears first, which is A in this case.
+
+\(\xi = \frac{F_a - F_{a0}}{a} \)
+
+For each \(\xi\) consumed of A,2\(\xi\) consumed of B and \(2\xi\) of D are produced.
+
+
+
+(4) The changing volumetric flow rate is computed using the following equation assuming the behavior of the gases are ideal
+
+\(\nu = \frac{\nu_0 * \sum  F_j}{\sum F_{j0}}\)
+
+(5) The ideal gas equation was used to calculate the initial total number of moles entering the reactor
+
+\( Ft_0 = \frac{P_0 v_0}{R*T} \)
+
+
+
+The equations above are used to solve for Fa in the integral. 
+
+*** Solving the problem using python 
+
+
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+R = 0.08205746 # L atm / (K mol)
+P0 = 5.0       # atm
+T = 328        # K
+v0 = 50.0      # L / min
+Ft0 = (P0*v0)/(R*T)
+Fa0 = 0.2*Ft0
+Fb0 = 0.5*Ft0
+FI0 = 0.3* Ft0
+
+def dFadV(Fa, V):
+    xi = (Fa - Fa0)/-1
+
+    Fb = Fb0 +xi*-2
+    Fd = xi*2
+    Ft= Fa + Fb + FI0+Fd
+ 
+    v = v0*(Ft/Ft0)
+
+    Ca= Fa/v
+    Cb= Fb/v 
+    ra =- 2.5* Ca**0.5 * Cb
+    return ra
+    
+Vspan = np.linspace(0, 50)
+sol   = odeint(dFadV, Fa0, Vspan)
+
+xi = (sol - Fa0)/-1
+Fb = Fb0 +xi*-2
+Fd = xi*2
+Ft= sol + Fb + FI0+Fd
+v = v0*(Ft/Ft0)
+
+plt.plot(Vspan, v)
+plt.xlabel('Volume (L)')
+plt.ylabel('v (L / min)')
+plt.title(' Volumetric Flow Rate  vs.  Volume of PFR')
+plt.savefig('plotot.png')
+
+print('The exit conversion of A is{0}'.format((Fa0-sol[-1])/Fa0))
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+The exit conversion of A is[ 0.6992527]
+:END:
+[[./plotot.png]]
+*** Discussion
+
+- As shown in the plot above, the volumetric flow rate decreases as the volume increases. This result is expected due to the facts that:
+
+1) As the volume of a pfr increases, the conversion is expected to increase. 
+
+2) As the conversion increases, the total number of moles exiting the reactor is decreased for this reaction, and hence the exit volumetric rate is decreased as the volume increase. 
+
+** PFR varying v
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+from scipy.optimize import fsolve
+Ca0 = 1  # mol/L
+k = 0.005 # mol/L^2 s
+Vspan = np.linspace(0, 2) # L
+v0span = np.linspace(0.0001, 0.2)
+Ca_target = 0.5
+
+
+def ode(Fa, V, v0):
+    Ca = Fa / v0
+    r = -k * Ca**2
+    return r
+
+
+def Ca(v0):
+    '''We need to create a function of Ca(v0) to use fsolve'''
+    Fa = odeint(ode, Ca0 * v0, Vspan, args=(v0,))
+    Ca = Fa / v0
+    return Ca[-1]
+
+
+def obj(v0):
+    '''Our objective function: Ca = 0.5'''
+    return Ca(v0) - Ca_target
+
+v0_sol = fsolve(obj, 1)
+print('Volumetric flow rate: {:.2f} L/min'.format(v0_sol[-1]*60))
+print('Exit concentration of Ca: {:.1f} mol/L'.format(Ca_target))
+
+plt.plot(v0span*60, Ca(v0span))
+plt.plot(v0_sol*60, Ca(v0_sol), 'ro')
+plt.xlabel('Volumetric flow rate (L/min)')
+plt.ylabel('$C_A$ (mol/L)')
+plt.savefig('this.png')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+Volumetric flow rate: 0.60 L/min
+Exit concentration of Ca: 0.5 mol/L
+:END:
+
+[[./this.png]]
+* CSTR vs PFR (Levenspiel)
+1. Prepare a Levenspiel plot for the reaction for X=0 to X=0.8. Note what the units on the y-axis are.
+
+2. Using only simple algebra and Python, estimate the CSTR volume required to achieve 50% conversion. 
+
+3. Using the data from the Levenspiel plot, and the quad function, estimate the PFR volume required to achieve 50% conversion.
+
+4. Compare the differences in the solution and discuss them.
+
+*** General Solution
+A) Part 1:
+
+Plotting \(\frac{F_{A0} }{-r_A}\) vs. the conversion involves algebraic manipulation of variables. Since \(r_A = -k C_A^2\), Ca can be solved for a specific x using the following equation 
+
+\(Ca = ( Ca0 - x Ca0) \)
+
+where 
+
+\(Ca0 = \frac{F_{A0} }{V}\)
+
+From the equation \(V = \frac{F_{A0} X}{-r_A}\), it can be seen that the term \(\frac{F_{A0} }{-r_A}\) has a unit of volume. 
+
+
+
+
+B) Part 2: 
+
+The volume of a CSTR is an algebraic equation that can be written as 
+
+\(V = \frac{F_{A0} X}{-r_A}\)
+
+Where Ca in the r_A term is calculated for x = 0.5  
+ 
+\(Ca = ( C{a0} - 0.5 C_{a0}) \)
+
+
+
+
+C) Part 3: the PFR equation is an integral that can be defined as 
+
+\(V =  \int_0^x \frac{F_{A0}}{-r_A} dx\)
+
+where 
+\(r_A = -k C_A^2\) and \(Ca = ( Ca0 - x Ca0) \)
+
+For this problem, the equation is integrated from 0 to 0.5 to obtain the PFR volume. 
+*** Python
+#+BEGIN_SRC python :results output org drawer
+
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+from scipy.integrate import quad
+
+# Given
+k = 0.5  # L/mol/hr
+v = 0.66  # L/hr
+Fa0 = 2.0  # mol/hr
+Ca0 = Fa0 / v  # mol/L
+
+# Part 1 : (Plotting Levenspiel plot)
+
+xspan = np.linspace(0, 0.8)
+Ca = Ca0 - Ca0 * xspan
+ra = - k * Ca**2
+slo = Fa0 / (- ra)
+
+plt.plot(xspan, slo)
+plt.xlabel('X, Conversion')
+plt.ylabel('Fa0 /(- ra), (Liter)')
+plt.savefig('plotleviplot.png')
+
+# Part 2 : Volume of a CSTR at 50% conversion
+
+x = 0.5
+Ca_R = Ca0 - Ca0 * x  # mol/L
+ra_R = -k * Ca_R**2
+slo_R = Fa0 / (- ra_R)
+V_CSTR = slo_R * x
+
+# Part 3 : Volume of a PFR at 50% conversion
+
+
+def integrand(xf):
+    return (Fa0 / (k * (Ca0 - Ca0 * xf)**2))
+
+V_PFR, e1 = quad(integrand, 0, 0.5)
+
+
+print('''To achieve a conversion of 50%, the volume required :
+for a CSTR V  = {0:1.4f} L
+for a PFR  V  = {1:1.4f} L 
+'''.format( V_CSTR, V_PFR))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+To achieve a conversion of 50%, the volume required :
+for a CSTR V  = 0.8712 L
+for a PFR  V  = 0.4356 L 
+
+:END:
+
+[[./plotleviplot.png]]
+
+* Transient CSTR
+** Stability problem
+*** Euqations
+
+- Solving the problem starts by writing the mole balance equation of a flow system. 
+
+\( \frac{dN_A}{dt} = F_{A0} - F_A + V r_A \)
+
+- Assuming the reactor is full but no A present at t=0 and the reactor volume is constant. The mole balance can rewritten in terms of concentration 
+\( \frac{dC_A}{dt} = F_{A0}/V - F_A/V + r_A \)
+
+where $-r_A = \frac{1.75 C_A}{(1 + 10 C_A)^2}$ ,  \( F_A0 = C_{A in} * v\) , and \( F_A = C_{A} * v\)
+
+Then, both sides of the mole balance equation are integrated over time to examine the transient behavior of the CSTR for the given reaction.
+*** Python 
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import odeint
+from scipy.optimize import fsolve
+import matplotlib.pyplot as plt
+
+
+CAin = 1.5
+v = 0.15  # L/min
+V = 5  # L
+FA0 = CAin * v  # mol/ min
+
+
+def dCadt(Ca, t):
+    rA = - 1.75 * Ca / ((1 + 10 * Ca)**2)
+    Fa = v * Ca
+    return FA0 - Fa + rA * V
+
+
+tspan = np.linspace(0, 100)
+Ca0 = np.linspace(0.10, CAin, num=100)
+
+
+for i in range(100):
+    sol = odeint(dCadt, Ca0[i], tspan)
+    plt.plot(tspan, sol)
+
+
+plt.xlabel('Time (min) ')
+plt.ylabel('$C_A$ (mol/L)')
+plt.title(' For Ca0 between 0.1 and 1.5 mol/L')
+plt.savefig('plotheplots.png')
+
+
+def dCa(Ca):
+    rA = - 1.75 * Ca / ((1 + 10 * Ca)**2)
+    Fa = v * Ca
+    return FA0 - Fa + rA * V
+
+print('Solving the function will give three steady-state solutions:')
+print('steady state A at Ca = {} mol/L'.format(fsolve(dCa, 0.06)))
+print('steady state B at Ca = {} mol/L'.format(fsolve(dCa, 0.18)))
+print('steady state C at Ca = {} mol/L'.format(fsolve(dCa, 0.8)))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+Solving the function will give three steady-state solutions:
+steady state A at Ca = [ 0.0740589] mol/L
+steady state B at Ca = [ 0.19680782] mol/L
+steady state C at Ca = [ 1.02913327] mol/L
+:END:
+[[./plotheplots.png]]
+
+
+* Semibatch
+** Liquid RXN
+In a semibatch reactor, liquid reactants are constantly fed to the reactor, but there is no flow out of the reactor.  Consider the elementary reaction with the following scenario: The 200 L reactor starts out half full of 2M species A. A 1M feed of species B is fed to the reactor at a constant volumetric flow rate $v_0$ of 1 L/min. The reaction is $\ce{A -> 2 B}$ and it proceeds at a rate of \(r = k C_A^{0.5}\), with $k = 0.021$ (mol/L)**0.5 / min. 
+
+Determine how long it will take before the reactor is 90% full, the concentration of B at that time, and the total conversion of A.
+*** General solution 
+-Solving the problem starts by writing the mole balance of the reactant and product:
+
+  - For A : \( \frac{d(N_A)}{dt} = - r_A V \)
+
+  - For B : \( \frac{d(N_B)}{dt} = \nu C_B + 2 * r_A V \)
+
+  - Where \(r_A = k C_A^{1/2} \)
+
+- Assuming no change in density, the volume equation can be written as
+
+ - The integral form :  $\frac{dV}{dt} = \nu_0$
+ 
+ - or the algebraic form : $V = V_0 + \nu_0 t$ 
+
+    - from the algebraic equation, equation we can see that the reactor will be 90% full after 80 minutes .
+
+- Then the equations are integrated over time to obtain the final concentrations.
+
+- The conversion can be expressed as 
+
+  \( x = \frac{C_{a0} * V_0-N_{a, final}}{C_{a0} * V_0} \)
+*** python 
+
+#+BEGIN_SRC python
+import numpy as np
+from pycse import odelay
+from scipy.integrate import odeint
+from scipy.optimize import fsolve
+import matplotlib.pyplot as plt
+
+Vtot = 200  # L total volume
+V0 = 100    # L initial volume
+
+Ca0 = 2.0   # initial concentration
+Cb0 = 1.0
+
+v0 = 1.0    # L / min
+
+k = 0.021    # (mol/L)^0.5 / min
+
+def ode(Y, t):
+    Na, Nb, V = Y
+
+    Ca = Na/V
+    Cb = Nb/V
+
+    r    = k*Ca**0.5
+
+    ra   = -r
+    rb   = 2*r
+
+    dNadt=ra*V
+    dNbdt =v0*Cb0+rb*V
+    dVdt  = v0
+    return [dNadt, dNbdt, dVdt]
+
+tspan = np.linspace(0,80)
+
+Y0    = [Ca0*V0, 0.0, V0]
+sol   = odeint(ode, Y0, tspan)
+
+Naf, Nbf, Vf = sol[-1,:]    
+tf    =tspan[-1]
+
+print('The final concentration of B Cb_final = {0:1.5f} mol/L'.format(Nbf / Vf))
+
+print('The reactor will be 90% full V_final = {0:1.2f} L  at t= {1} min'.format(Vf, tf))
+
+print('When the volume reaches 180 L, the conversion will have a value of x = {0:1.5f}'.format((Ca0*V0-Naf)/(Ca0*V0)))
+
+#+END_SRC
+
+#+RESULTS:
+: The final concentration of B Cb_final = 2.46715 mol/L
+: The reactor will be 90% full V_final = 180.00 L  at t= 80.0 min
+: When the volume reaches 180 L, the conversion will have a value of x = 0.91022
+
+
+* PBR and Membrane(PBR)
+** PBR Vs Membrane (PBR)
+The reaction \(A \rightarrow 2B + C\) occurs in a packed bed reactor. There is a pressure drop that is characterized by alpha = 0.0079 / kg cat. Assuming the kinetics are described by \(r = k P_A\), with k = 0.018 mol/atm/kgcat/h, A is fed at 1.05 mol/hr, at a feed pressure of 5 atm. The reactor is at 450K.
+*** General Solution
+
+- Solving the problem starts by writing the differential equation for a PBR: 
+
+\( \frac{dy}{dW} = -\frac{\alpha}{2 y}\frac{T}{T_0} \frac{F_T}{F_{T0}} \) 
+
+  - where: 
+
+  \(\alpha = \frac{2 \beta_0}{A_c \rho_c (1 - \phi) P_0} \)
+
+  $y = P / P_0$
+
+  - Since the equation is dependent on $F_T$ , it must be coupled to the mole balances. The mole balances for this problem can be written as 
+
+  \( \frac{dF_A}{dW} = r_A \)
+
+  \(\frac{dF_B}{dW} = -2 r_A \)
+
+  \(\frac{dF_C}{dW} = - r_A \)
+
+  - Where:
+
+\(r_A = - k P_A\)
+
+-Then, the equation is integrated to obtain the values of mole flowrate of species and the the pressure ratio y. 
+
+-To calculate the exit concentrations, the change in pressure and number of moles must be accounted for. It is assumed that the reactor is isothermal and the reactants and products are ideal gases.
+
+ - The pressure at the exit can be calculated by
+
+   $P_{exit} = y * P_0$ 
+
+ - The ideal gas law is used to calculate the the concentration of A and B
+
+   \(v_0 = \frac{Ft0*R*T}{P_0}\)
+
+   \(v =\frac{ v_0 * Ft_{exit} * P_0}{Ft_0 * P_{exit}} \)
+
+   \(Ca_{exit} = \frac{Fa_{exit}}{v}\)
+
+   \(Cb_{exit} = \frac{Fb_{exit}}{v}\)
+
+- Most of the equations used to solve this part are identical to the ones in the previous part. The only difference is adding the flux expression R_C to the ODE as shown in the equation below
+  \(\frac{dF_C}{dW} = - r_A + R_C = -r_A - k_c C_c \)
+
+  - Where: \( C_C = \frac{F_c}{v}\)
+
+*** python 
+**** PBR
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import odeint
+
+T = 450  # K
+R = 0.082057338  # L*atm/K/mol
+Fa0 = 1.05  # mol / hr
+Fb0 = 0.0
+Fc0 = 0.0
+
+Ft0 = Fa0 + Fb0 + Fc0
+P0 = 5  # atm
+v0 = Ft0 * R * T/P0
+
+alpha = 0.0079  # 1 / kg cat.
+k = 0.018  # mol / (atm * kg_cat * h)
+
+
+def ode(F, W):
+    Fa, Fb, Fc, y = F  # unpack the variables
+    P = y * P0
+
+    Ft = Fa + Fb + Fc
+
+    Pa = Fa / Ft * P
+
+    # the stoichiometry
+    ra = -k * Pa
+    rb = -2 * ra
+    rc = -ra
+
+    # define the 4 coupled ODES
+    dFadW = ra
+    dFbdW = rb
+    dFcdW = rc
+    dydW = -alpha / (2 * y) * Ft / Ft0
+
+    return [dFadW, dFbdW, dFcdW, dydW]
+
+# initial conditions
+y0 = 1.0  # P0/P0
+F0 = [Fa0, Fb0, Fc0, y0]
+
+Wspan = np.linspace(0, 45)  # kg of cat
+
+sol = odeint(ode, F0, Wspan)
+
+Fa = sol[:, 0]
+Fb = sol[:, 1]
+Fc = sol[:, 2]
+y = sol[:, 3]
+
+Ft_exit = Fa[-1] + Fb[-1] + Fc[-1]
+P_exit = y[-1] * P0
+v = v0 * (Ft_exit / Ft0) * (P0 / P_exit)
+print(v)
+print(P_exit)
+
+Ca_exit = Fa[-1] / v
+Cb_exit = Fb[-1] / v
+Cc_exit = Fc[-1] / v
+
+print('The conversion in the PBR is {0:1.4f} '.format((Fa0 - Fa[-1]) / Fa0))
+
+print('''For a catalyst weight of 45 kg in a PBR: 
+The exit concentration of A is {0:1.8f} mol /L
+The exit concentration of B is {1:1.8f} mol /L '''.format( Ca_exit , Cb_exit))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+41.0577471042
+2.43178010894
+The conversion in the PBR is 0.7876 
+For a catalyst weight of 45 kg in a PBR: 
+The exit concentration of A is 0.00543268 mol /L
+The exit concentration of B is 0.04028211 mol /L 
+:END:
+
+
+
+**** Mmebrane PBR
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import odeint
+
+T = 450  # K
+R = 0.082057338  # L*atm/K/mol
+Fa0 = 1.05  # mol / hr
+Fb0 = 0.0
+Fc0 = 0.0
+kc = 0.5  # L/kg/hr
+Ft0 = Fa0 + Fb0 + Fc0
+
+
+P0 = 5  # atm
+v0 = Ft0 * R * T/P0
+
+alpha = 0.0079  # 1 / kg cat.
+k = 0.018  # mol / (atm * kg_cat * h)
+
+
+def ode(F, W):
+    Fa, Fb, Fc, y = F  # unpack the variables
+    P = y * P0
+
+    Ft = Fa + Fb + Fc
+
+    Pa = Fa / Ft * P
+
+    # the stoichiometry
+    ra = -k * Pa
+    rb = -2 * ra
+    rc = -ra
+    v = v0 * (Ft / Ft0) * (P0 / P)
+    Cc = Fc / v
+    Rc = -kc * Cc
+
+    # define the 4 coupled ODES
+    dFadW = ra
+    dFbdW = rb
+    dFcdW = rc + Rc
+    dydW = -alpha / (2 * y) * Ft / Ft0
+
+    return [dFadW, dFbdW, dFcdW, dydW]
+
+# initial conditions
+y0 = 1.0  # P0/P0
+F0 = [Fa0, Fb0, Fc0, y0]
+
+Wspan = np.linspace(0, 45)  # kg of cat
+
+sol = odeint(ode, F0, Wspan)
+
+Fa = sol[:, 0]
+Fb = sol[:, 1]
+Fc = sol[:, 2]
+y = sol[:, 3]
+
+
+Ft_exit = Fa[-1] + Fb[-1] + Fc[-1]
+P_exit = y[-1] * P0
+v0 =  Ft0 * R * T/P0
+v = v0 * (Ft_exit / Ft0) * (P0 / P_exit)
+
+Ca_exit = Fa[-1] / v
+Cb_exit = Fb[-1] / v
+
+print(v)
+print(P_exit)
+print('The conversion in the membrane reactor is {0:1.4f} '.format(
+    (Fa0 - Fa[-1]) / Fa0))
+print('''For a catalyst weight of 45 kg in a membrane reactor: 
+The exit concentration of A is {0:1.8f} mol /L
+The exit concentration of B is {1:1.8f} mol /L '''.format( Ca_exit , Cb_exit))
+#+END_SRC
+
+
+* Membrane (PFR)
+** Changing N
+, $A \rightarrow B + C$,
+ $k = 0.7$ 1/min, $k_b' = k_b a =  0.2$ 1/min
+- let $-r_A = k C_A$
+\( \frac{dF_A}{dV} = r_A + R_A  \)
+
+*** python 
+#+BEGIN_SRC python
+import numpy as np
+from scipy.integrate import odeint
+
+k = 0.7     # rate constant  1/min
+kb = 0.2    # mass transfer coefficent * a  1/min
+
+Ca0 = 0.2   # mol / L
+Fa0 = 10.0  # mol / min
+Ft0 = Fa0   # Fb0, Fc0 = 0
+
+v0 = Fa0 / Ca0  # inlet volumetric flow
+
+Cbs = 0.0    # concentration of B outside shell
+
+
+def dFdV(F, V):
+    Fa, Fb, Fc = F     # unpack the variables
+    Ft = Fa + Fb + Fc  # compute total molar flow
+
+    v = v0 * Ft / Ft0  # compute corrected volumetric flowrate
+    Ca = Fa / v        # compute concentrations
+    Cb = Fb / v
+    ra = -k * Ca       # compute reaction rate
+    rb = -ra
+    rc = -ra
+    Rb = kb * (Cbs - Cb) # rate of mass transfer across shell .................. the sign in consistant 
+    Rb = kb * (Cbs - Cb)  # rate of mass transfer across shell
+
+    # define the mole balances
+    dFadV = ra
+    dFbdV = rb + Rb      #with this 
+    dFcdV = rc
+    return [dFadV, dFbdV, dFcdV]
+
+Vspan = np.linspace(0.0, 400.0)  # liters
+F0 = [Fa0, 0, 0]
+sol = odeint(dFdV, F0, Vspan)
+Faexit, Fbexit, Fcexit = sol[-1, :]
+print('''Fa_exit = {0} mol/min
+Fb_exit = {1} mol/min
+Fc_exit = {2} mol/min'''.format(Faexit, Fbexit, Fcexit))
+v_exit = v0*(Faexit+Fbexit +Fcexit)/Ft0
+
+
+
+v_exit = v0 * (Faexit + Fbexit + Fcexit) / Ft0
+
+print('''Ca_exit = {0} mol/L
+Cb_exit = {1} mol/L
+Cc_exit = {2} mol/L'''.format(Faexit / v_exit, Fbexit / v_exit, Fcexit / v_exit))
+#+END_SRC
+
+#+RESULTS:
+: Fa_exit = 0.23592352651668289 mol/min
+: Fb_exit = 4.469312535575382 mol/min
+: Fc_exit = 9.764076473483316 mol/min
+: Ca_exit = 0.003261019152591015 mol/L
+: Cb_exit = 0.06177643235760899 mol/L
+: Cc_exit = 0.1349625484898 mol/L
+
+
+* Other Problems
+** Units 
+r
+** Uncertainty
+rr
+
+
+* Useful Notes
+** X low = rxn slow > Reaction time vs Residence time
+
+Tau = V/v
+Reaction time =  1/k
+ 
+** Why membrane has a higher conversion PBR or PFR
+
+- The results obtained are consistent with what is expected. The conversion of the membrane is expected to be higher than that of a PBR. That is because the the exit flow rate of the membrane is lower, which allows reactant to stay longer in the reactor, and be converted to products. Removing one of the products causes the membrane reactor to have a lower exit flow rate than a PBR.
+
+** CSTR stability
+At the middle root, the first derivative is zero, but a little distance away from it the derivative pushes the solution away from the root in both directions. In other words, it is unstable. In contrast, at the other two roots, small perturbations push the solution back to the root.
+
+** CSTR vs PFR Leviplot
+It can be said that the results obtained  are consistent with what is expected. For a positive reaction order (m), the volume of a CSTR is always greater than that of a PFR for the same conversion. This is because CSTRs operate at the lowest reaction rate (the exit rate) and PFRs start at a high rate that eventually decreases to the exit rate.Since the volume of the reactor is inversely proportional to the rate, the PFR requires less volume to achieve the required conversion of 50%. As shown on the Levenspiel plot above,the volume of the PFR is the area under the curve, the red shaded area, while the volume of a CSTR is the area of the green square on the plot. It can be seen that a PFR can be modeled as as infinitely many CSTRs in series. 
+
+** CSTR in series parallel
+To achieve a conversion of 50%, for simplicity, we may consider two scenarios:
+
+a) The flow rate is fixed at 50L/hr:
+
+1)For a single CSTR, the volume of the CSTR needs to be about 665 L. Running CSTRs in parallel with total volume of 665L is not a good idea since the conversion would be identical to what is achieved in a one large reactor.
+
+2) Operating CSTRs in series to minimize the total volume of the reactors.  This causes the conversion to be greater as the reactors operate at higher concentration. 
+
+
+
+b) The volume is fixed at 200 L:
+
+1) The flow rate should be adjusted to a value that will satisfy the condition of conversion. 
+
+2) Operating CSTR's in series with total volume of 200-L and adjusting the flow to have 50% conversion. The flow is expected to be higher than 15 L/hr. 
+
+
+Overall, having CSTRs in series seems to be the most efficient operating mode for this problem. PFR??????????
+
+* Python plt and import, find max
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import fsolve
+from scipy.integrate import quad
+from scipy.integrate import odeint
+
+#find max in an array 
+print(max(sol[:,1]))#Find the maximum 
+print(tspan[np.argmax(sol[:,1])]) #Find time of max
+
+
+
+plt.plot(X, Y)
+plt.xlabel(' X (L/hr)')
+plt.ylabel(' Y ')
+plt.savefig('plot1.png')
+[[./plot1.png]]
+
+
+print('C_A at t = 1 hour = {:1.5f} mol/L'.format(sol[-1, 0]))
+
+
+
+#+END_SRC
+
+
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+
+A = np.array([[0, 1], [1, 2], [3, 4]])
+
+print(A[:, 0])
+
+a, b, c = A
+
+print(a)
+print(b)
+
+print(A.T)
+d, e = A.T
+print(d)
+
+
+Alist = [[0, 1], [1, 2], [3, 4]]
+print(Alist)
+print(np.transpose(Alist))
+#+END_SRC
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+[0 1 3]
+[0 1]
+[1 2]
+[[0 1 3]
+ [1 2 4]]
+[0 1 3]
+[[0, 1], [1, 2], [3, 4]]
+[[0 1 3]
+ [1 2 4]]
+:END:
+
+* General Equations
+** Batch
+The first step to solving this problem is to write the batch reactor material balance equation in terms of concentration  
+
+\(\frac{dC_A}{dt} = r_A  \)
+
+
+or in terms of moles
+
+\( \frac{dN_A}{dt} = V r_A \)
+
+
+** CSTR
+Solving a CSTR problem starts by writing the steady state  material balance equation: 
+
+In   -   out   -   consumption   = 0
+
+\( F_{A0} - v_0 C_{A, exit} + V  r_A =0\)
+
+
+Where \(F_{A0}\) can be expressed as
+ 
+\( F_{A0} =  C_{A, 0} v_0\)
+*** conversion CSTR
+since\(v_0= v_{exit}\), it can be expressed in terms of concentration
+
+\(X = \frac{C_{A, 0}-C_{A_exit}}{C_{A, 0}}\)
+
+
+The second form is derived from the reactor design equation for a CSTR: 
+
+\( X = \frac{- r_A V }{C_{A, 0} v_0}\)
+** Transient CSTR
+- Solving the problem starts by writing the mole balance equation of a flow system. 
+
+\( \frac{dN_A}{dt} = F_{A0} - F_A + V r_A \)
+
+- Or in terms of concentration
+ 
+\( \frac{dC_A}{dt} = F_{A0}/V - F_A/V + r_A \)
+
+where  \( F_A0 = C_{A in} * v\) , and \( F_A = C_{A} * v\)
+
+Then, both sides of the mole balance equation are integrated over time to examine the transient behavior of the CSTR for the given reaction.
+
+** PFR
+ The mole balance for a plug flow reactor is given as
+
+\( \frac{dF_A}{dV} = r_A \) 
+
+** Semibatch
+
+$\ce{A -> 2 B}$ 
+Solving the problem starts by writing the mole balance of the reactant and product:
+
+  - For A : \( \frac{d(N_A)}{dt} = - r_A V \)
+
+  - For B : \( \frac{d(N_B)}{dt} = \nu C_B + 2 * r_A V \)
+
+  - Where \(r_A = k C_A^{1/2} \)
+
+- Assuming no change in density, the volume equation can be written as
+
+ - The integral form :  $\frac{dV}{dt} = \nu_0$
+ 
+ - or the algebraic form : $V = V_0 + \nu_0 t$ 
+
+** PBR
+
+For   \(A \rightarrow 2B + C\) :
+
+- Solving the problem starts by writing the differential equation for a PBR: 
+
+\( \frac{dy}{dW} = -\frac{\alpha}{2 y}\frac{T}{T_0} \frac{F_T}{F_{T0}} \) 
+
+  - where: 
+
+  \(\alpha = \frac{2 \beta_0}{A_c \rho_c (1 - \phi) P_0} \)
+
+  $y = P / P_0$
+
+  - Since the equation is dependent on $F_T$ , it must be coupled to the mole balances. The mole balances for this problem can be written as 
+
+  \( \frac{dF_A}{dW} = r_A \)
+
+  \(\frac{dF_B}{dW} = -2 r_A \)
+
+  \(\frac{dF_C}{dW} = - r_A \)
+
+  - Where:
+
+\(r_A = - k P_A\)
+
+** membrane as PBR
+
+ For   \(A \rightarrow 2B + C\) :
+
+- Solving the problem starts by writing the differential equation for a PBR: 
+
+\( \frac{dy}{dW} = -\frac{\alpha}{2 y}\frac{T}{T_0} \frac{F_T}{F_{T0}} \) 
+
+  - where: 
+
+  \(\alpha = \frac{2 \beta_0}{A_c \rho_c (1 - \phi) P_0} \)
+
+  $y = P / P_0$
+
+  - Since the equation is dependent on $F_T$ , it must be coupled to the mole balances. The mole balances for this problem can be written as 
+
+  \( \frac{dF_A}{dW} = r_A \)
+
+  \(\frac{dF_B}{dW} = -2 r_A \)
+
+  \(\frac{dF_C}{dW} = - r_A + R_C = -r_A - k_c C_c \)
+
+  - Where: \( C_C = \frac{F_c}{v}\)
+
+  - Where:
+
+\(r_A = - k P_A\)
+
+** membrane as PFR
+The mole balance equations for a membrane reactor is  
+$A \rightarrow B + C$
+
+\( \frac{dF_A}{dV} = r_A \)
+\( \frac{dF_B}{dV} = -r_A +R_B = -r_A + kb * (C_{bs}-C_b)  \)
+\( \frac{dF_C}{dV} = -r_A   \)
+
+- Assume that the outside of the reactor is swept by an inert gas, so $C_{B,s} = 0$.
+
+** Conversion
+Conversion can be expressed in terms of concentration
+
+\(X = \frac{C_{A, 0}-C_{A_exit}}{C_{A, 0}}\)
+
+
+The second form is derived from the reactor design equation for a CSTR: 
+
+\( X = \frac{- r_A V }{C_{A, 0} v_0}\)
+
+** N change
+ Since the number of moles is changing, the concentration is defined as 
+
+\( C_j = \frac{F_j}{\nu} \)
+
+This equation can be  used to calculate the initial molar flow rate and the concentrations as th volume changes.
+
+The molar flow rates are computed using the reaction extent:
+
+$F_j = F_{j0} + \xi \alpha_j$.
+
+It should be noted that the extent is limited by the reactant that disappears first, which is $$$$$$$$$$$$ in this case.
+
+\(\xi = \frac{F_a - F_{a0}}{a} \)
+
+For each \(\xi\) consumed of A, \(\xi\) consumed of B and \(3\xi\) of C are produced.
+
+
+The changing volumetric flow rate is computed using the following 
+
+\(\nu = \frac{\nu_0 * \sum  F_j}{\sum F_{j0}}\)
+
+
+- The entrance flow rate
+
+$P_0 \nu_0 = F_{T0} R T_0 Z_0$
+
+-  The exit flow 
+
+$P \nu = F_T R T Z$
+
+- We combine the two equations to get 
+
+\( \nu = \nu_0 \frac{F_T}{F_{T0}} \frac{P0}{P} \frac{T}{T_0} \frac{Z}{Z_0}\)
+
+
+
+** mole flow, concentration, other stuff
+
+ \( F_A0 = C_{A in} * v\)
+
+\( F_A = C_{A} * v\)
+
+
+* Solve for constant 
+** Integral for ODE (two sides)
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import quad
+from scipy.optimize import fsolve
+
+y0=1
+yf=2
+x0=0
+xf=10
+
+def integrand1 (y):#LHS
+    return 1.0/y
+
+def integrand2 (x): #RHS
+    return 1
+
+def func(C):
+    I1, e1 = quad(integrand1,y0, yf)
+    I2, e2 = quad(integrand2, 0, xf)
+    return I1 -  C* I2
+
+guess = 0.1
+sol   = fsolve(func, guess)
+print('C = {0:1.7f}'.format(float(sol)))
+
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+C = 0.0693147
+:END:
+
+** Integral one side 
+dy= C dx
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import quad
+
+yf =np.log(2)
+x0 = 0
+xf = 10
+
+def integrand(x):
+    return 1.0
+
+i, e = quad(integrand, x0, xf)
+
+C = yf/i
+
+print('C = {0}'.format(C))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+C = 0.06931471805599453
+:END:
+
+** Algebraic equation
+
+
+#+BEGIN_SRC python
+from scipy.optimize import fsolve
+import numpy as np
+
+x=3 
+
+y=5
+
+def func(cc):
+    RHS = cc * x   
+    return y - RHS 
+
+guess= 1
+
+ans, = fsolve(func, guess)  # note the comma after ans. That "unpacks" the array
+
+print('C = {0:1.5f} '.format(ans))
+#+END_SRC
+
+#+RESULTS:
+: C = 1.66667 
+
+* units K
+-For a zero-order reaction, the units of k are mol/L¡Ps
+- For a first-order reaction, the units of k are 1/s
+- For a second-order reaction, the units of k are L/mol¡Ps
+- for 1.5  $L^{{1/2}}/mol^{{1/2}}/hr$
+* How large for Conversion
+** CSTR
+#+BEGIN_SRC python
+from scipy.optimize import fsolve
+import numpy as np
+import matplotlib.pyplot as plt
+
+k = 0.23   # 1/hr
+Fa0 = 1.0  # mol /hr
+v0 = 2.5   # L /hr
+Ca_exit= 0.2
+
+def func(V):
+    ra = -k * Ca_exit
+    Fa = v0 * Ca_exit
+    return Fa0 - Fa + V * ra #it ignores the second return 
+
+guess = 1.0  # mol / L #if it is not a line, guess carefully!!
+ans, = fsolve(func, guess)  # note the comma after ans. That "unpacks" the array
+print('V = {0:1.5f} L'.format(ans))
+#+END_SRC
+
+#+RESULTS:
+: 10.8695652174
+: V = 10.86957 L
+
+** PFR
+#+BEGIN_SRC python
+from scipy.integrate import odeint
+
+Ca0 = 3.0  # mol / L
+v0 = 10.0  # volumetric flowrate L/min
+k = 0.23   # rate constant 1/min
+Fa0 =v0*Ca0
+
+def ode(Fa, V):
+    Ca = Fa / v0
+    ra = - k * Ca  
+    return ra
+
+Vspan = [0,10, 20, 30, 50, 100] # reactor volume
+import numpy as np
+Vspan = np.linspace(0,100,200)#it does not matter unless you want to plot it
+sol = odeint(ode, Ca0 * v0, Vspan)
+X= (Fa0-sol)/Fa0
+Fa_exit = sol[-1, 0] # last row, column 0
+
+print('Exit concentration = {0:1.4f} mol/L'.format(Fa_exit / v0))
+print(' The volume in Liters is')
+#+END_SRC
+
+#+RESULTS:
+: Exit concentration = 0.3008 mol/L
+:  The volume in Liters is
+
+** Batch
+
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import quad
+from scipy.optimize import fsolve
+
+Na0=5
+Naf=0.83
+t0=0
+tf=5
+k= 0.259893
+
+def integrand1 (Na):#LHS
+    return 1.0/Na**1.5
+
+def integrand2 (t): #RHS
+    return 1.0
+
+def func(V):
+    I1, e1 = quad(integrand1,Na0, Naf)
+    I2, e2 = quad(integrand2, t0, tf)
+    return I1 +  k* I2/(V**0.5)
+
+guess = 1
+sol   = fsolve(func, guess)
+print('V = {0:1.7f}L'.format(float(sol)))
+
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+V = 0.9978595
+:END:
+
+
+* Range of v
+** CSTR 
+
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import fsolve
+
+v = np.linspace(50, 200)  # L/hr
+Ca0 = 3  # mol/L
+V = 200  # L
+Fa0 = Ca0 * v  # mol/hr
+k = 0.05  # L/mol/hr
+Conversion = []
+for i in range(50):
+
+    def M(Ca):
+        return -V * k * Ca**2 - v[i] * Ca + v[i] * Ca0
+
+    Ca_exit = fsolve(M, 2.0)
+
+    X = (-Ca_exit + Ca0) / Ca0
+
+    Conversion.append(X)
+
+plt.plot(v, Conversion)
+plt.xlabel(' flow rate (L/hr)')
+plt.ylabel(' Conversion X')
+plt.savefig('Conv.png')
+A = Conversion[0]
+print(
+    'As shown in the graph below, it is not possible to achieve a conversion of 50% over the entire operating range of the pump. The highest possible conversion is X= {0:1.3f} at a flow rate of {1} L/hr. The conversion decreases as the flow rate increases. '.format(A[0], v[0]))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+As shown in the graph below, it is not possible to achieve a conversion of 50% over the entire operating range of the pump. The highest possible conversion is X= 0.297 at a flow rate of 50.0 L/hr. The conversion decreases as the flow rate increases. 
+:END:
+
+** PFR(think about it!)
+#+BEGIN_SRC python
+from scipy.integrate import odeint
+import numpy as np
+import matplotlib.pyplot as plt
+
+Ca0 = 3.0  # mol / L
+v0 = np.linspace(0.1, 10.0)  # volumetric flowrate L/min
+k = 0.23   # rate constant 1/min
+Conversion = []
+Vol =[]
+
+for i in range (50):
+    def ode(Fa, V):
+        Ca = Fa / v0[i]
+        ra = - k * Ca  
+        return ra
+    Vspan =100 #it does not matter unless you want to plot it
+    sol = odeint(ode, Ca0 * v0[i], Vspan)
+    Fa_exit = sol[:,0] # last row, column 0
+    X = (Ca0*v0[i]-Fa_exit)/(Ca0*v0[i])
+    Conversion.append(X)
+    Vol.append(Vspan)
+
+plt.plot(v0, Conversion)
+plt.xlabel(' flow rate (L/hr)')
+plt.ylabel(' Conversion X')
+plt.savefig('Conv.png')
+
+#+END_SRC
+
+#+RESULTS:
+
+[[./Conv.png]]
+** Semibatch
+** Pfr find v
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+from scipy.optimize import fsolve
+Ca0 = 1  # mol/L
+k = 0.005 # mol/L^2 s
+Vspan = np.linspace(0, 2) # L
+v0span = np.linspace(0.0001, 0.2)
+Ca_target = 0.5
+
+
+def ode(Fa, V, v0):
+    Ca = Fa / v0
+    r = -k * Ca**2
+    return r
+
+
+def Ca(v0):
+    '''We need to create a function of Ca(v0) to use fsolve'''
+    Fa = odeint(ode, Ca0 * v0, Vspan, args=(v0,))
+    Ca = Fa / v0
+    return Ca[-1]
+
+
+def obj(v0):
+    '''Our objective function: Ca = 0.5'''
+    return Ca(v0) - Ca_target
+
+v0_sol = fsolve(obj, 1)
+print('Volumetric flow rate: {:.2f} L/min'.format(v0_sol[-1]*60))
+print('Exit concentration of Ca: {:.1f} mol/L'.format(Ca_target))
+
+plt.plot(v0span*60, Ca(v0span))
+plt.plot(v0_sol*60, Ca(v0_sol), 'ro')
+plt.xlabel('Volumetric flow rate (L/min)')
+plt.ylabel('$C_A$ (mol/L)')
+plt.savefig('thisplot.png')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+Volumetric flow rate: 0.60 L/min
+Exit concentration of Ca: 0.5 mol/L
+:END:
+[[./thisplot.png]]
+** pfr vs CSTR 
+CSTR is homework cstr
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+from scipy.optimize import fsolve
+Ca0 = 3  # mol/L
+k = 0.05 # mol/L^2 hr
+Vspan = np.linspace(0, 200) # L
+v0span = np.linspace(50, 200) #L/hr
+Ca_target = 0.5
+
+
+def ode(Fa, V, v0):
+    Ca = Fa / v0
+    r = -k * Ca**2
+    return r
+
+
+def Ca(v0):
+    '''We need to create a function of Ca(v0) to use fsolve'''
+    Fa = odeint(ode, Ca0 * v0, Vspan, args=(v0,))
+    Ca = Fa / v0
+    return Ca[-1]
+
+
+def obj(v0):
+    '''Our objective function: Ca = 0.5'''
+    return Ca(v0) - Ca_target
+
+v0_sol = fsolve(obj, 1)
+print('Volumetric flow rate: {:.2f} L/hr'.format(v0_sol[-1]))
+print('Exit concentration of Ca: {:.1f} mol/L'.format(Ca_target))
+
+plt.plot(v0span, (Ca0-Ca(v0span))/Ca0)
+plt.xlabel('Volumetric flow rate (L/hr)')
+plt.ylabel('$C_A$ (mol/L)')
+plt.savefig('thisplot.png')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+Volumetric flow rate: 6.00 L/hr
+Exit concentration of Ca: 0.5 mol/L
+:END:
+
+[[./thisplot.png]]
+
+* Py
+** semibatch three
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import odeint
+
+k = 0.02      # L^2/mol^2/hr
+
+Ca0 = 2.0     # mol / L
+Cbfeed = 2.0  # mol /L
+
+v0 = 0.1      # L / min
+V0 = 5.0      # L
+
+# We have three ODEs
+def ode(Y, t):
+    Na, Nb, Nc , V = Y 
+    #Na, Nb = Y
+   # V   = V0 +v0*t    (alternative : algebraic eqn)
+    Ca = Na / V
+    Cb = Nb / V
+    Cc = Nc / V
+
+    r = k * Ca * Cb**2
+ 
+    ra = -r
+    rb = -r
+    rc = r
+
+    dNadt = ra * V
+    dNbdt = v0 * Cbfeed + rb * V
+    dNcdt = rc * V
+    dVdt = v0
+    return [dNadt, dNbdt, dNcdt, dVdt]
+
+tspan = np.linspace(0, 70) # minutes
+Y0 = [Ca0 * V0, 0.0,0.0, 5.0]
+
+sol = odeint(ode, Y0, tspan)
+Na_fin, Nb_fin, Nc_fin, V_fin = sol[-1, :]
+print('Ca_final = {0}'.format(Na_fin / V_fin))
+print('Cb_final = {0}'.format(Nb_fin / V_fin))
+print('V_final = {0}'.format(V_fin))
+import matplotlib.pyplot as plt
+import pycse.orgmode as org
+#plt.plot(tspan, sol)
+#plt.legend(['A','B','V'])
+#plt.savefig('whateveir.png')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+Ca_final = 0.4840284533469563
+Cb_final = 0.8173617866802885
+V_final = 12.000000000000009
+:END:
+
+
+** Membrane vs PFR
+#+BEGIN_SRC python
+import numpy as np
+from scipy.integrate import odeint
+
+k = 0.7     # rate constant  1/min
+kb = 0.2    # mass transfer coefficent * a  1/min
+
+Ca0 = 0.2   # mol / L
+Fa0 = 10.0  # mol / min
+Ft0 = Fa0   # Fb0, Fc0 = 0
+
+v0 = Fa0 / Ca0  # inlet volumetric flow
+
+Cbs = 0.0    # concentration of B outside shell
+
+
+def dFdV(F, V):
+    Fa, Fb, Fc = F     # unpack the variables
+    Ft = Fa + Fb + Fc  # compute total molar flow
+
+    v = v0 * Ft / Ft0  # compute corrected volumetric flowrate
+    Ca = Fa / v        # compute concentrations
+    Cb = Fb / v
+    ra = -k * Ca       # compute reaction rate
+    rb = -ra
+    rc = -ra
+
+    # define the mole balances
+    dFadV = ra
+    dFbdV = rb      #with this 
+    dFcdV = rc
+    return [dFadV, dFbdV, dFcdV]
+
+Vspan = np.linspace(0.0, 400.0)  # liters
+F0 = [Fa0, 0, 0]
+sol = odeint(dFdV, F0, Vspan)
+Faexit, Fbexit, Fcexit = sol[-1, :]
+print(''' For a pfr: Fa_exit = {0} mol/min
+Fb_exit = {1} mol/min
+Fc_exit = {2} mol/min'''.format(Faexit, Fbexit, Fcexit))
+v_exit = v0*(Faexit+Fbexit +Fcexit)/Ft0
+
+
+
+v_exit = v0 * (Faexit + Fbexit + Fcexit) / Ft0
+
+print('''  For a PFR: Ca_exit = {0} mol/L
+Cb_exit = {1} mol/L
+Cc_exit = {2} mol/L'''.format(Faexit / v_exit, Fbexit / v_exit, Fcexit / v_exit))
+
+print((Fa0-Faexit)/Fa0)
+
+def dFdV(F, V):
+    Fa, Fb, Fc = F     # unpack the variables
+    Ft = Fa + Fb + Fc  # compute total molar flow
+
+    v = v0 * Ft / Ft0  # compute corrected volumetric flowrate
+    Ca = Fa / v        # compute concentrations
+    Cb = Fb / v
+    ra = -k * Ca       # compute reaction rate
+    rb = -ra
+    rc = -ra
+    Rb = kb * (Cbs - Cb) # rate of mass transfer across shell .................. the sign in consistant 
+    Rb = kb * (Cbs - Cb)  # rate of mass transfer across shell
+
+    # define the mole balances
+    dFadV = ra
+    dFbdV = rb + Rb      #with this 
+    dFcdV = rc
+    return [dFadV, dFbdV, dFcdV]
+
+Vspan = np.linspace(0.0, 400.0)  # liters
+F0 = [Fa0, 0, 0]
+sol = odeint(dFdV, F0, Vspan)
+Faexit, Fbexit, Fcexit = sol[-1, :]
+print('''For a membrane: Fa_exit = {0} mol/min
+Fb_exit = {1} mol/min
+Fc_exit = {2} mol/min'''.format(Faexit, Fbexit, Fcexit))
+v_exit = v0*(Faexit+Fbexit +Fcexit)/Ft0
+
+
+
+v_exit = v0 * (Faexit + Fbexit + Fcexit) / Ft0
+
+print('''For a membrane: Ca_exit = {0} mol/L
+Cb_exit = {1} mol/L
+Cc_exit = {2} mol/L'''.format(Faexit / v_exit, Fbexit / v_exit, Fcexit / v_exit))
+print((Fa0-Faexit)/Fa0)
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+ For a pfr: Fa_exit = 0.3758280420907521 mol/min
+Fb_exit = 9.624171957909253 mol/min
+Fc_exit = 9.624171957909253 mol/min
+  For a PFR: Ca_exit = 0.003830256307342228 mol/L
+Cb_exit = 0.09808487184632887 mol/L
+Cc_exit = 0.09808487184632887 mol/L
+0.962417195791
+For a membrane: Fa_exit = 0.23592352651668289 mol/min
+Fb_exit = 4.469312535575382 mol/min
+Fc_exit = 9.764076473483316 mol/min
+For a membrane: Ca_exit = 0.003261019152591015 mol/L
+Cb_exit = 0.06177643235760899 mol/L
+Cc_exit = 0.1349625484898 mol/L
+0.976407647348
+#+end_example
+
+
+** Weight of Catalyst rqrd
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import odeint
+
+T = 450  # K
+R = 0.082057338  # L*atm/K/mol
+Fa0 = 1.05  # mol / hr
+Fb0 = 0.0
+Fc0 = 0.0
+
+Ft0 = Fa0 + Fb0 + Fc0
+P0 = 5  # atm
+v0 = Ft0 * R * T/P0
+
+alpha = 0.0079  # 1 / kg cat.
+k = 0.018  # mol / (atm * kg_cat * h)
+
+
+def ode(F, W):
+    Fa, Fb, Fc, y = F  # unpack the variables
+    P = y * P0
+
+    Ft = Fa + Fb + Fc
+
+    Pa = Fa / Ft * P
+
+    # the stoichiometry
+    ra = -k * Pa
+    rb = -2 * ra
+    rc = -ra
+
+    # define the 4 coupled ODES
+    dFadW = ra
+    dFbdW = rb
+    dFcdW = rc
+    dydW = -alpha / (2 * y) * Ft / Ft0
+
+    return [dFadW, dFbdW, dFcdW, dydW]
+
+# initial conditions
+y0 = 1.0  # P0/P0
+F0 = [Fa0, Fb0, Fc0, y0]
+
+Wspan = np.linspace(0, 55)  # kg of cat
+
+sol = odeint(ode, F0, Wspan)
+
+Fa = sol[:, 0]
+Fb = sol[:, 1]
+Fc = sol[:, 2]
+y = sol[:, 3]
+X = ((Fa0 - Fa) / Fa0)
+print(X)
+print(Wspan[-1])
+
+Ft_exit = Fa[-1] + Fb[-1] + Fc[-1]
+P_exit = y[-1] * P0
+v = v0 * (Ft_exit / Ft0) * (P0 / P_exit)
+print(v)
+print(P_exit)
+
+Ca_exit = Fa[-1] / v
+Cb_exit = Fb[-1] / v
+Cc_exit = Fc[-1] / v
+
+print('The conversion in the PBR is {0:1.4f} '.format((Fa0 - Fa[-1]) / Fa0))
+
+print('''For a catalyst weight of {0} kg in a PBR: 
+The exit concentration of A is {1:1.8f} mol /L
+The exit concentration of B is {2:1.8f} mol /L '''.format(Wspan[-1] ,Ca_exit , Cb_exit))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+[ 0.          0.0846008   0.15254776  0.2095666   0.25872214  0.30188279
+  0.34028744  0.37480768  0.40608423  0.43460443  0.46074911  0.48482257
+  0.50707241  0.52770325  0.54688644  0.5647671   0.58146935  0.59710029
+  0.611753    0.62550895  0.63843988  0.65060925  0.66207352  0.67288307
+  0.68308306  0.6927141   0.70181278  0.71041216  0.71854218  0.72622995
+  0.73350007  0.74037487  0.74687458  0.75301752  0.75882024  0.7642976
+  0.7694629   0.7743279   0.77890285  0.78319649  0.78721601  0.79096693
+  0.79445295  0.79767566  0.80063411  0.80332407  0.80573681  0.80785692
+  0.80965766  0.81108946]
+55.0
+115.579558814
+0.879631002629
+The conversion in the PBR is 0.8111 
+For a catalyst weight of 55.0 kg in a PBR: 
+The exit concentration of A is 0.00171619 mol /L
+The exit concentration of B is 0.01473693 mol /L 
+:END:
+
+** pffffr Im not stupid
+#+BEGIN_SRC python
+from scipy.integrate import odeint
+
+Ca0 = 1.0  # mol / L
+v0 = 0.01 # volumetric flowrate L/min
+k = 0.005   # rate constant 1/min
+
+def ode(Fa, V):
+    Ca = Fa / v0
+    ra = - k * Ca**2  
+    return ra
+
+import numpy as np
+Vspan = np.linspace(0,2)#it does not matter unless you want to plot it
+sol = odeint(ode, Ca0 * v0, Vspan)
+Fa_exit = sol[-1, 0] # last row, column 0
+
+print('Exit concentration = {0:1.4f} mol/L'.format(Fa_exit / v0))
+#+END_SRC
+
+#+RESULTS:
+: Exit concentration = 0.5000 mol/L
+* Second Exam o0o0o0o0
+* Multiple Reactions
+** Batch 
+1. A \rightarrow 2B
+2. B \rightarrow C
+ $r_1 = k_1 C_A$, and $r_2 = k_2 C_B$.
+
+#+BEGIN_SRC python
+import numpy as np
+from scipy.integrate import odeint
+
+k1 = 0.09 # 1/min  assuming both are first order
+k2 = 0.2  # 1/min  r2 = k2 * Cb
+
+CA0 = 2.5 # mol/L
+
+def batch(C, t):
+    Ca, Cb, Cc = C
+    r1 = k1 * Ca
+    r2 = k2 * Cb
+
+    ra = -r1
+    r1b = 2 * r1
+    r2b = -r2
+    rb = r1b + r2b
+    rc = r2
+
+    dCadt = ra
+    dCbdt = rb
+    dCcdt = rc
+
+    return [dCadt, dCbdt, dCcdt]
+
+init = [CA0, 0.0,0.0] # initial conditions
+tspan = np.linspace(0, 50) # min
+sol = odeint(batch, init, tspan)
+
+import matplotlib.pyplot as plt
+plt.plot(tspan, sol)
+plt.xlabel('Time (min)')
+plt.ylabel('Conc (mol/L)')
+plt.legend(['A','B', 'C'])
+plt.savefig('batchmult.png')
+
+#+END_SRC
+
+#+RESULTS:
+
+[[./batchmult.png]]
+** CSTR
+
+\begin{align}
+M + H_2 \rightarrow X + CH_4 \\
+X + H_2 \rightarrow T + CH_4
+\end{align}
+
+#+BEGIN_SRC python
+def funcC(C):
+    vo = 476.0    # ft^3 / hr
+    V = 238.0     # ft^3
+    Po = 35.0     # atm
+    T = 1500.0    # Rankine
+    R = 0.73      # in appropriate units
+    CTo = Po / R / T
+
+    Cmo = CTo / 3.0
+    Cho = CTo * 2.0 / 3.0
+    Cxo = 0.0
+    Cmeo = 0.0
+    Ctolo = 0.0
+
+    tau = V / vo
+
+    CM, CH, CX, CMe, CT = C
+
+    # rate laws
+    k1 = 55.20  # (ft^3/lbmol)^0.5/h
+    k2 = 30.20  # (ft^3/lbmol)^0.5/h
+    r1m = -k1 * CM * CH**0.5
+    r2t = k2 * CX * CH**0.5
+
+    # net rates
+    rM = r1m
+    rH = r1m - r2t
+    rX = -r1m - r2t
+    rMe = -r1m + r2t
+    rT = r2t
+    # 0 = Fa0 - Fa + ra * V
+    # Fa - Fa0 - ra * V = 0
+    # v0 * Ca - v0 * Ca0 - ra * V = 0
+    # Ca - Ca0 - ra * tau = 0 
+    #rate - in + out
+    return [tau * (-rM) - Cmo + CM,
+            tau * (-rH) - Cho + CH,
+            tau * (-rX) - Cxo + CX,
+            tau * (-rMe) - Cmeo + CMe,
+            tau * (-rT) - Ctolo + CT]
+
+initGuesses = [0.002, 0.002, 0.002, 0.002, 0.002]
+from scipy.optimize import fsolve
+
+exitC = fsolve(funcC, initGuesses)
+
+species = ['M', 'H', 'X', 'Me', 'T']
+for s,C in zip(species, exitC):
+    print('{0:^3s}{1:1.5f} lbmol/ft^3'.format(s,C))
+#+END_SRC
+
+#+RESULTS:
+:  M 0.00294 lbmol/ft^3
+:  H 0.00905 lbmol/ft^3
+:  X 0.00317 lbmol/ft^3
+: Me 0.01226 lbmol/ft^3
+:  T 0.00455 lbmol/ft^3
+
+** Same in PFR 
+#+BEGIN_SRC python
+import numpy as np
+from scipy.integrate import odeint
+
+vo = 476.0    # ft^3 / hr
+Po = 35.0     # atm
+T = 1500.0    # Rankine
+R = 0.73      # in appropriate units
+CTo = Po / R / T
+Fto = CTo * vo
+
+# initial molar flows
+Fmo = Fto / 3.0
+Fho = Fto * 2.0 / 3.0
+Fxo = 0.0
+Fmeo = 0.0
+Ftolo = 0.0
+
+
+def dFdV(F, t):
+    'PFR moe balances'
+    Ft = F.sum()
+
+    v = vo * Ft / Fto
+    C = F / v
+    CM, CH, CX, CMe, CT = C
+
+    # rate laws
+    k1 = 55.20
+    k2 = 30.20
+    r1m = -k1 * CM * CH**0.5
+    r2t = k2 * CX * CH**0.5
+
+    # net rates
+    rM = r1m
+    rH = r1m - r2t
+    rX = -r1m - r2t
+    rMe = -r1m + r2t
+    rT = r2t
+
+    dFMdV = rM
+    dFHdV = rH
+    dFXdV = rX
+    dFMedV = rMe
+    dFTdV = rT
+
+    return [dFMdV, dFHdV, dFXdV, dFMedV, dFTdV]
+
+Finit = [Fmo, Fho, Fxo, Fmeo, Ftolo]
+Vspan = np.linspace(0.0, 238.0)
+
+sol = odeint(dFdV, Finit, Vspan)
+
+Ft = sol.sum(axis=1)  # sum each row
+v = vo * Ft / Fto
+
+FM  = sol[:,0]
+FH  = sol[:,1]
+FX  = sol[:,2]
+FMe = sol[:,3]
+FT  = sol[:,4]
+#even if theres a pressure drop!!!
+
+FM = sol[:, 0]
+FH = sol[:, 1]
+FX = sol[:, 2]
+FMe = sol[:, 3]
+FT = sol[:, 4]
+
+tau = Vspan / vo
+
+import matplotlib.pyplot as plt
+plt.plot(tau, FM / v, label='$C_M$')
+plt.plot(tau, FH / v, label='$C_H$')
+plt.plot(tau, FX / v, label='$C_X$')
+
+plt.legend(loc='best')
+plt.xlabel('$\\tau$ (hr)')
+plt.ylabel('Concentration (lbmol/ft$^3$)')
+plt.savefig('ns-pfr.png')
+
+#+END_SRC
+
+#+RESULTS:
+
+[[./ns-pfr.png]]
+** PBR
+
+\(A + 2 B \rightarrow C\)
+\(A + 3 C \rightarrow D\)
+
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+T = 450  # K
+R = 0.082057338  # L*atm/K/mol
+Fa0 = 10  # mol / min
+Fb0 = 10  #mol/min
+Fc0 = 0
+Fd0 =0 
+
+Ft0 = Fa0 + Fb0
+P0 = 7  # atm
+v0 = Ft0 * R * T/P0
+
+alpha = 0.0019 # 1 / kg cat.
+k1 = 50  # L^9/(mol kgcat min)
+k2= 600  # L^12/(mol kgcat min)
+
+#The stoichiometric coefficients of each species in the two reactions
+a1 = -1
+a2 = -1
+b1 = -2   
+b2 =  0 
+c1 =  1   
+c2 = -3
+d1 =  0   
+d2 =  1
+
+def ode(F, W):
+    Fa, Fb, Fc,Fd, y = F  # unpack the variables
+    P = y * P0
+
+    Ft = Fa + Fb + Fc + Fd
+    #Define the partial pressure of reactant
+    Pa = Fa / Ft * P
+    Pb = Fb / Ft * P
+    Pc = Fc / Ft * P
+    #calculate the concentration of the reactant 
+    Ca = Pa/R/T
+    Cb= Pb/R/T
+    Cc = Pc/R/T
+
+    # the stoichiometry
+    r1 =  k1 * Ca**(-a1) * Cb**(-b1)
+    r2 =  k2 * Ca**(-a2) * Cc**(-c2)
+
+    ra = a1 * r1  +  a2 * r2
+    rb = b1 * r1  +  b2 * r2
+    rc = c1 * r1  +  c2 * r2
+    rd = d1 * r1  +  d2 * r2 
+
+    # define the 4 coupled ODES
+    dFadW = ra
+    dFbdW = rb
+    dFcdW = rc
+    dFddW = rd
+    dydW = -alpha / (2 * y) * Ft / Ft0
+
+    return [dFadW, dFbdW, dFcdW, dFddW, dydW]
+
+# initial conditions
+y0 = 1.0  # P0/P0
+F0 = [Fa0, Fb0, Fc0, Fd0, y0]
+
+Wspan = np.linspace(0, 1000, 1001)  # kg of cat
+
+sol = odeint(ode, F0, Wspan)
+
+Fa = sol[:, 0]
+Fb = sol[:, 1]
+Fc = sol[:, 2]
+Fd = sol[:, 3]
+y  = sol[:, 4]
+
+Xb =(Fb0-Fb)/Fb0
+
+plt.subplot(1,2,1)
+plt.plot(Wspan, Xb)
+plt.xlabel('Weight of Catalyst, W (kg) ')
+plt.ylabel('Conversion of B, Xb')
+
+print('The catalyst weight needed to achieve a conversion of  {0:1.3f} in B is {1} kg '.format(Xb[315], Wspan[315]))
+
+plt.subplot(1,2,2)
+plt.plot(Wspan, Fa, Wspan, Fb, Wspan, Fc, Wspan, Fd)
+plt.xlabel('Weight of Catalyst, W (kg) ')
+plt.ylabel('molar flow rates $F_i$ (mol/min)')
+plt.legend(['Fa', 'Fb', 'Fc', 'Fd'])
+plt.tight_layout()
+plt.savefig('pts5.png')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+The catalyst weight needed to achieve a conversion of  0.800 in B is 315.0 kg 
+:END:
+
+
+[[./pts5.png]]
+** Volume of CSTR?
+#+BEGIN_SRC python
+def funcC(C):
+    vo = 476.0    # ft^3 / hr
+    V = 238.0     # ft^3
+    Po = 35.0     # atm
+    T = 1500.0    # Rankine
+    R = 0.73      # in appropriate units
+    CTo = Po / R / T
+
+    Cmo = CTo / 3.0
+    Cho = CTo * 2.0 / 3.0
+    Cxo = 0.0
+    Cmeo = 0.0
+    Ctolo = 0.0
+
+    tau = V / vo
+
+    CM, CH, CX, CMe, CT = C
+
+    # rate laws
+    k1 = 55.20  # (ft^3/lbmol)^0.5/h
+    k2 = 30.20  # (ft^3/lbmol)^0.5/h
+    r1m = -k1 * CM * CH**0.5
+    r2t = k2 * CX * CH**0.5
+
+    # net rates
+    rM = r1m
+    rH = r1m - r2t
+    rX = -r1m - r2t
+    rMe = -r1m + r2t
+    rT = r2t
+    # 0 = Fa0 - Fa + ra * V
+    # Fa - Fa0 - ra * V = 0
+    # v0 * Ca - v0 * Ca0 - ra * V = 0
+    # Ca - Ca0 - ra * tau = 0 
+    #rate - in + out
+    return [tau * (-rM) - Cmo + CM,
+            tau * (-rH) - Cho + CH,
+            tau * (-rX) - Cxo + CX,
+            tau * (-rMe) - Cmeo + CMe,
+            tau * (-rT) - Ctolo + CT]
+
+initGuesses = [0.002, 0.002, 0.002, 0.002, 0.002]
+from scipy.optimize import fsolve
+
+exitC = fsolve(funcC, initGuesses)
+
+species = ['M', 'H', 'X', 'Me', 'T']
+for s,C in zip(species, exitC):
+    print('{0:^3s}{1:1.5f} lbmol/ft^3'.format(s,C))
+#+END_SRC
+
+#+RESULTS:
+:  M 0.00294 lbmol/ft^3
+:  H 0.00905 lbmol/ft^3
+:  X 0.00317 lbmol/ft^3
+: Me 0.01226 lbmol/ft^3
+:  T 0.00455 lbmol/ft^3
+
+** Two things in PBR
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+T = 450  # K
+R = 0.082057338  # L*atm/K/mol
+Fa0 = 10  # mol / min
+Fb0 = 10  #mol/min
+Fc0 = 0
+Fd0 =0 
+
+Ft0 = Fa0 + Fb0
+P0 = 7  # atm
+v0 = Ft0 * R * T/P0
+
+palpha = 0.0019 # 1 / kg cat.
+k1 = 50  # L^9/(mol kgcat min)
+k2= 600  # L^12/(mol kgcat min)
+
+#The stoichiometric coefficients of each species in the two reactions
+a1 = -1
+a2 = -1
+b1 = -2   
+b2 =  0 
+c1 =  1   
+c2 = -3
+d1 =  0   
+d2 =  1
+
+def ode(F, W, d):
+    alpha = 1e-3 / d
+    k = 0.005 / d**2 * (d / np.tanh(d) - 1)
+    Fa, Fb, Fc,Fd, y = F  # unpack the variables
+    P = y * P0
+
+    Ft = Fa + Fb + Fc + Fd
+    #Define the partial pressure of reactant
+    Pa = Fa / Ft * P
+    Pb = Fb / Ft * P
+    Pc = Fc / Ft * P
+    #calculate the concentration of the reactant 
+    Ca = Pa/R/T
+    Cb= Pb/R/T
+    Cc = Pc/R/T
+
+    # the stoichiometry
+    r1 =  k1 * Ca**(-a1) * Cb**(-b1)
+    r2 =  k2 * Ca**(-a2) * Cc**(-c2)
+
+    ra = a1 * r1  +  a2 * r2
+    rb = b1 * r1  +  b2 * r2
+    rc = c1 * r1  +  c2 * r2
+    rd = d1 * r1  +  d2 * r2 
+
+    # define the 4 coupled ODES
+    dFadW = ra
+    dFbdW = rb
+    dFcdW = rc
+    dFddW = rd
+    dydW = -alpha / (2 * y) * Ft / Ft0
+
+    return [dFadW, dFbdW, dFcdW, dFddW, dydW]
+
+dp = np.linspace(0.2,1.5,1001)
+
+# initial conditions
+y0 = 1.0  # P0/P0
+F0 = [Fa0, Fb0, Fc0, Fd0, y0]
+
+Wspan = np.linspace(0, 500, 1001)  # kg of cat
+
+Xb_exit=[]
+for d in dp:
+    sol = odeint(ode, F0, Wspan, args=(d,))
+    Fa, Fb, Fc, Fd, y= sol.T
+    Xb_exit+=[ (Fb0-Fb[-1])/Fb0]
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, -996.29999999999995, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+:END:
+
+* Reversible Reactions (R)
+** Solve for reaction extent given K CA0 single rxn in CSTR
+
+
+\( A +  B  \rightleftharpoons C + D \)
+\( K = \frac{\xi_{eq}^2}{(C_{A,0} - \xi_{eq})^2} \)
+
+#+BEGIN_SRC python
+import numpy as np
+
+
+R = 1.987   # cal / mol / K
+dG = -730   # cal / mol
+T = 1000.0  # K
+
+K = np.exp(-dG / R / T)
+print('K = {0}'.format(K))
+
+Pa0 = 5        # atm
+R = 0.082057   # L atm / (mol K)
+Ca0 = Pa0 / (R * T)
+
+def func(xi):
+    return K - (xi**2) / (Ca0 - xi)**2
+
+from scipy.optimize import fsolve
+guess = 0.05
+xi_eq, = fsolve(func, guess)
+print('xi_eq = ',xi_eq)
+
+print('C_A = {0:1.4f} mol / L'.format(Ca0 - xi_eq))
+print('C_C = {0:1.4f} mol / L'.format(xi_eq))
+#+END_SRC
+
+#+RESULTS:
+: K = 1.4439580981442106
+: xi_eq =  0.0332570531518
+: C_A = 0.0277 mol / L
+: C_C = 0.0333 mol / L
+** Extent of multiple reactions with equilibrium
+
+- \(A + B \rightleftharpoons C\) with K_1 = 108
+- \(A + B \rightleftharpoons D \) with K_2 = 284
+
+
+\(K_1 = \frac{a_C}{a_A a_B} \)
+
+and
+
+\(K_2 = \frac{a_D}{a_A a_B} \)
+
+\begin{align}
+n_A = n_{A0} - \xi_1 - \xi_2 \\
+n_B = n_{B0} - \xi_1 - \xi_2 \\
+n_C = \xi_1  \\
+n_D = \xi_2 \\
+n_{total} = n_{t0} - \xi_1 - \xi_2
+\end{align}
+
+\begin{align}
+y_A = \frac{y_{A0} - \xi_1' - \xi_2'}{1 - \xi_1' - \xi_2'} \\
+y_B = \frac{y_{B0} - \xi_1' - \xi_2'}{1 - \xi_1' - \xi_2'} \\
+y_C = \frac{\xi_1'}{1 - \xi_1' - \xi_2'} \\
+y_D = \frac{\xi_2'}{1 - \xi_1' - \xi_2'} \\
+\end{align}
+
+$a_j = y_j P / 1 atm$.
+
+#+BEGIN_SRC python
+ya0 = 0.5  # initial mole fraction of A
+yb0 = 0.5  # initial mole fraction of B
+P = 2.5    # initial pressure in atm
+
+def xj(extent):
+    'convenience function to calculate mole fractions'
+    ext1, ext2 = extent
+    ya = (ya0 - ext1 - ext2) / (1.0 - ext1 - ext2)
+    yb = (yb0 - ext1 - ext2) / (1.0 - ext1 - ext2)
+    yc = (ext1) / (1.0 - ext1 - ext2)
+    yd = (ext2) / (1.0 - ext1 - ext2)
+    return [ya, yb, yc, yd]
+
+def func(extent):
+    'zeros function for fsolve'
+    ya, yb, yc, yd = xj(extent)
+
+    eq1 = 108.0 - (yc * P)/(ya * P * yb * P)
+    eq2 = 284.0 - (yd * P)/(ya * P * yb * P)
+
+    return [eq1, eq2]
+
+from scipy.optimize import fsolve
+
+guess = [0.1, 0.39]
+sol = fsolve(func, guess)
+
+print('The reaction extents are:\n',sol)
+
+print('The mole fractions are: \n',xj(sol))
+#+END_SRC
+
+#+RESULTS:
+: The reaction extents are:
+:  [ 0.13335692  0.35067931]
+: The mole fractions are: 
+:  [0.030939713798347378, 0.030939713798347378, 0.25846179039432998, 0.67965878200897523]
+
+#+BEGIN_SRC python
+import numpy as np
+
+N= 10000
+ya0 = np.random.normal(0.5, 0.01, N)  # initial mole fraction of A  # initial mole fraction of B
+P = 2.5    # initial pressure in atm
+
+from scipy.optimize import fsolve
+
+SOL = np.empty(ya0.shape)
+for i in range(N):
+    def xj(ext1):
+        'convenience function to calculate mole fractions'
+        ya = (ya0[0,i] -2* ext1) / (1.0 - ext1)
+        yb = (2*ext1) / (1.0 - ext1)
+        yc = (ext1) / (1.0 - ext1)
+        return [ya, yb, yc]
+    def func(extent):
+        'zeros function for fsolve'
+        ya, yb, yc = xj(extent)
+
+        eq1 = 0.558 - (yc * P)*(yb *P)/(ya * P )
+
+        return eq1
+
+    guess = [0.1]
+    sol[0,i] = fsolve(func, guess)[0]
+
+#print('The reaction extents are:\n',sol)
+
+#print('The mole fractions are: \n',xj(sol))
+
+#import numpy as np
+#from scipy.optimize import fsolve
+
+#N = 10000    # number of MC samples
+#V =  66000   # L
+#Kc = 0.558 
+#Ca0 = np.random.normal(1, 0.05, (1, N))
+
+
+# create the array to store the results in
+# It is usually more efficient to create arrays then fill them in.
+#SOL = np.empty(Ca0.shape)
+
+#for i in range(N):
+ #   def extent(xi):
+  #      return ( (2*xi)**2 * (xi) )/(Ca0[0,i]-2*xi)**2 - Kc
+   # guess = 0.01  # guessing 90% conversion
+    #SOL[0,i] = fsolve(extent, guess)[0]
+
+#print('Reaction extent = {0}+/-{1}'.format(np.mean(SOL), np.std(SOL)))
+
+# This is an approximate % uncertainty (about 2%)
+
+#+END_SRC
+
+
+#+RESULTS:
+
+** Temperature dependence Keq
+\(\ce{2NH3} \leftrightharpoons \ce{N2} + \ce{3H2}\)
+
+#+BEGIN_SRC python
+import numpy as np
+from scipy.optimize import fsolve
+import matplotlib.pyplot as plt
+
+R = 8.314e-3  # kJ/mol/K
+species = ['NH3', 'N2', 'H2']
+
+# Heats of formation at 298.15 K
+
+Hf298 = [-45.90,   # NH3
+            0.0,   # N2
+            0.0]   # H2
+
+# Shomate parameters for each species in each column
+# we write it this way to take less horizontal space
+#      NH3              N2              H2
+WB = [[19.99563  ,    19.50583     ,     33.066178 ],     # A
+      [49.77119  ,    19.88705     ,    -11.363417 ],     # B
+      [-15.37599 ,   -8.598535	   ,     11.432816 ],     # C
+      [1.921168	 ,    1.369784     ,    -2.772874  ],     # D
+      [0.189174  ,    0.527601	   ,    -0.158558  ],     # E
+      [-53.30667 ,   -4.935202	   ,    -9.980797  ],     # F
+      [203.8591	 ,    212.3900	   ,   172.707974  ],     # G
+      [-45.89806 ,    0.0	   ,     0.0       ]]     # H
+
+# transpose the array so it has the right dimensions
+WB = np.array(WB).T
+
+def G_rxn(T):
+    # Shomate equations
+    t = T/1000
+    T_H = np.array([t,  t**2 / 2.0, t**3 / 3.0,
+                    t**4 / 4.0, -1.0 / t, 1.0, 0.0, -1.0])
+    T_S = np.array([np.log(t), t,  t**2 / 2.0,  t**3 / 3.0,
+                    -1.0 / (2.0 * t**2), 0.0, 1.0, 0.0])
+
+    H = np.dot(WB, T_H)           # (H - H_298.15) kJ/mol
+    S = np.dot(WB, T_S / 1000.0)  # absolute entropy kJ/mol/K
+
+    Gjo = Hf298 + H - T * S       # Gibbs energy of each component 
+
+    nu = np.array([ -2 , 1 , 3])
+    Grxn = np.dot(nu, Gjo)
+    return Grxn
+
+T= np.linspace(500, 1000, 500)
+Keq= []
+
+for i in range(500):
+    def Eq(K):
+        return K - np.exp(-G_rxn(T[i])/(T[i]*R))
+    Kq = fsolve(Eq, 1.0)
+    Keq.append(Kq)
+
+plt.plot(T, Keq)
+plt.xlabel(' Temperature (K)')
+plt.ylabel(' Equilibrium constant, $K_{eq}$')
+plt.savefig('Keq.png')
+
+
+#+END_SRC
+
+#+RESULTS:
+
+[[./Keq.png]]
+#+RESULTS:
+** Reaction extent from Kp, kC , Keq
+#+name: code
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import fsolve
+import pycse.orgmode as org
+
+# Calculated from Thursday homework
+Kp_old = 0.00459926651124
+
+n = 2 - 4
+Kc = 1 / 9.6 
+T = 300 + 273 # K
+R = 8.314e-3  # kJ/mol/K
+
+Kp = Kc * (R * T)**n
+
+print('$K_p$ given: {:12.5f}'.format(Kp))
+print('$K_p$ from NIST: {:8.5f}\n'.format(Kp_old))
+
+Ca0 = 0.1
+
+def func(xi):
+    return Kc - (xi * (3*xi)**3)/(Ca0-2*xi)**2
+
+
+xi_eq, = fsolve(func, 0.01)
+
+print('The equilibrium concentration of A is {:1.4f} M'.format(Ca0-2*xi_eq))
+print('The equilibrium concentration of B  is {:1.4f} M'.format(xi_eq))
+print('The equilibrium concentration of C is {:1.4f} M'.format(3*xi_eq))
+#+END_SRC
+
+#+RESULTS: code
+:RESULTS:
+$K_p$ given:      0.00459
+$K_p$ from NIST:  0.00460
+
+The equilibrium concentration of A is 0.0235 M
+The equilibrium concentration of B  is 0.0382 M
+The equilibrium concentration of C is 0.1147 M
+:END:
+
+** CSTR reversible rxn given k1 and Keq (No k2)
+1. $A + B \rightarrow C + D$
+2. $C + D \rightarrow A + B$
+
+$\frac{k_1}{k_2} = \frac{C_{C,eq} C_{D,eq}}{C_{A,eq} C_{B,eq}} = K_{eq}$
+
+#+BEGIN_SRC python
+from scipy.optimize import fsolve
+
+Keq = 1.44395809814
+v0 = 0.01 # L / s
+V = 10    # L
+
+k1 = 0.02 # L / mol / s
+
+Ca0 = Cb0 = 0.05 # mol / L
+Cc0 = Cd0 = 0.0
+
+Fa0 = v0 * Ca0
+
+def cstr(Ca):
+    xi = (Ca - Ca0) / (-1) # compute reaction extent
+    Cb = Cb0 - xi
+    Cc = Cc0 + xi
+    Cd = Cd0 + xi
+
+    ra = -k1 * (Ca * Cb - (Cc * Cd) / Keq)
+    return Fa0 - Ca * v0 + V * ra
+
+guess = 0.002
+ca_exit, = fsolve(cstr, guess)
+
+print('the exit concentration of C_A is {0:1.4f} mol / L'.format(ca_exit))
+print('the exit concentration of C_C is {0:1.4f} mol / L'.format(Ca0 - ca_exit))
+
+print((Ca0-ca_exit)/Ca0)
+#import matplotlib.pyplot as plt 
+#import numpy as np 
+#x = np.linspace(-10, 0.2)
+#c = [cstr(x1) for x1 in x] 
+#plt.plot(x, c)
+#plt.show()
+#+END_SRC
+
+#+RESULTS:
+: the exit concentration of C_A is 0.0327 mol / L
+: the exit concentration of C_C is 0.0173 mol / L
+: 0.345572276703
+
+or 
+
+
+
+#+BEGIN_SRC python
+from scipy.optimize import fsolve
+
+Keq = 1.44395809814
+v0 = 0.01 # L / s
+V = 10    # L
+
+k1 = 0.02 # L / mol / s
+
+Ca0 = Cb0 = 0.05 # mol / L
+Cc0 = Cd0 = 0.0
+
+Fa0 = v0 * Ca0
+Fb0 = v0 * Cb0
+Fc0 = v0 * Cc0
+Fd0 = v0 * Cd0
+
+def cstr(C):
+    Ca, Cb, Cc, Cd = C    
+    ra = -k1 * (Ca * Cb - (Cc * Cd) / Keq)
+    rb = ra
+    rc = -ra
+    rd = -ra
+    
+    return [Fa0 - Ca * v0 + V * ra,
+            Fb0 - Cb * v0 + V * rb,
+            Fc0 - Cc * v0 + V * rc,
+            Fd0 - Cd * v0 + V * rd]
+
+guess = [0.02, 0.02, 0.03, 0.03]
+C = fsolve(cstr, guess)
+
+print(C)
+#+END_SRC
+
+#+RESULTS:
+: [ 0.03272139  0.03272139  0.01727861  0.01727861]
+
+** Same PFR
+
+#+BEGIN_SRC python :results output org drawer
+from scipy.optimize import fsolve
+import numpy as np 
+from scipy.integrate import odeint
+
+Keq = 1.44395809814
+v0 = 0.01 # L / s
+V = 10    # L
+
+k1 = 0.02 # L / mol / s
+
+Ca0 = Cb0 = 0.05 # mol / L
+Cc0 = Cd0 = 0.0
+
+Fa0 = v0 * Ca0
+Fb0 = v0 * Cb0
+Fc0 = v0 * Cc0
+Fd0 = v0 * Cd0
+
+def dFadV(Fa, V):
+    xi = (Fa - Fa0)/-1 #reaction extent
+    Fb = Fb0 + xi*-1
+    Fc = xi
+    Fd = xi
+    Ft = Fa+ Fb +Fc +Fd 
+    v  = v0 *Ft/(Fa0+Fb0)
+
+    Ca = Fa/v
+    Cb = Fb/v
+    Cc = Fc/v
+    Cd = Fd/v
+    ra = -k1 * (Ca * Cb - (Cc * Cd) / Keq)
+    return ra
+
+#Solving for Fa
+Vspan = np.linspace(0, V)
+sol   = odeint(dFadV, Fa0, Vspan)
+
+#Solving Fb, Fc, and Ft
+xi      = (sol - Fa0)/-1 #reaction extent
+Fb      = Fb0 + xi*-1
+Fc      = xi*3
+Ft_exit = sol[-1] + Fb[-1] + Fc[-1]
+
+#Calculate v_exit
+v_exit  = v0*(Ft_exit/(Fa0+Fb0))
+X = (Fa0- sol[-1])/Fa0
+print(X)
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+[ 0.45028215]
+:END:
+
+* Parameter Estimation
+** Linear regression 
+#+name: spectral-data
+| Wavenumber (cm^{-1} | Absorbance (arb. units) |
+|---------------------+-------------------------|
+|             804.184 |                  0.1591 |
+|             827.326 |                  0.0439 |
+|             846.611 |                  0.0050 |
+|             869.753 |                  0.0073 |
+|             889.038 |                  0.0448 |
+|             892.895 |                  0.0649 |
+|             900.609 |                  0.1204 |
+
+#+BEGIN_SRC python :var data=Spectral-data
+import numpy as np
+from pycse import regress
+
+#Parameter Calculation
+data = np.array(data)
+x = data[:, 0]
+y = data[:, 1]
+X = np.column_stack([x**2, x, x**0])
+
+XTX = np.dot(X.T, X)
+XTy = np.dot(X.T, y)
+
+p = np.dot(np.linalg.inv(XTX), XTy)
+a,b,c = p 
+
+#Error Calculation 
+e = y - np.dot(X,p)
+SSE = np.dot(e, e)
+yb = y - np.mean(y)
+SST = np.dot(yb, yb)
+Rsq = 1 - SSE/SST
+
+# Uncertainity Calculation
+alpha = 1 - 0.95
+p, pint, se = regress(X, y, alpha)
+a_interval, b_interval, c_interval = pint
+
+#Plotting the results
+import matplotlib.pyplot as plt
+plt.plot(x, y, 'bo')
+x = np.linspace(800,1000)
+X = np.column_stack([x**2, x, x**0])
+plt.plot(x, np.dot(X, p), 'r--')
+plt.xlabel('Wavenumber (1/cm)')
+plt.ylabel('Absorbance')
+plt.legend(['Data','Fit'])
+plt.savefig('fit.png')
+
+#Summerizing the results
+print(''' For the polynomial of degree 2, y = a x^2 + b x + c, the parameters were estimated to be:
+a = {0:1.10f}
+b = {1:1.10f}
+c = {2:1.10f}'''.format(a,b,c))
+print('''
+The absorbance values predicted at 850 and 1000 wavenumbers are:
+Absorbance(850) = {0} arb. unit
+Absorbance(1000) = {1} arb. unit '''.format(a *850**2 + b* 850 +c, a *1000**2 + b* 1000 +c))
+
+print('''
+R-squared = {0} '''.format(Rsq))
+
+print('''
+a is between {0} 
+      at the 95% confidence level'''.format(a_interval))
+
+print('''
+b is between {0}
+      at the 95% confidence level'''.format(b_interval))
+
+print('''
+c is between {0} 
+      at the 95% confidence level'''.format(c_interval))
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+ For the polynomial of degree 2, y = a x^2 + b x + c, the parameters were estimated to be:
+a = 0.0000599224
+b = -0.1026856737
+c = 43.9853574527
+
+The absorbance values predicted at 850 and 1000 wavenumbers are:
+Absorbance(850) = -0.0035098470096528445 arb. unit
+Absorbance(1000) = 1.2221133040285181 arb. unit 
+
+R-squared = 0.9821821095413852 
+
+a is between [  4.67791939e-05   7.30656651e-05] 
+      at the 95% confidence level
+
+b is between [-0.1251385  -0.08023284]
+      at the 95% confidence level
+
+c is between [ 34.40979283  53.56092195] 
+      at the 95% confidence level
+#+end_example
+
+** Linearized linear regression
+
+#+name: conversion-data
+| Temp | Conversion |
+|------+------------|
+|  360 |     0.1055 |
+|  370 |     0.2010 |
+|  380 |     0.3425 |
+|  390 |     0.5146 |
+|  400 |     0.6757 |
+|  410 |     0.8026 |
+|  420 |     0.8924 |
+|  430 |     0.9544 |
+
+\(- \ln(1 - X) = A \frac{T - T0}{b} \exp{-\frac{E}{RT}}\)
+
+\(\ln\left[-\frac{b \ln(1-X)}{(T - T0)}\right] = \ln(A) - \frac{E}{RT}\)
+
+
+#+BEGIN_SRC python :var data=conversion-data
+import numpy as np
+from pycse import regress
+
+#Parameter Calculation
+data = np.array(data)
+T = data[:, 0]
+Conversion = data[:, 1]
+b = 10 #K/min
+To= 338.75 #K
+R = 8.3144598 #J/(K mol)
+
+y = np.log(-1*(b*(np.log(1-Conversion)))/(T-To))
+X = np.column_stack([1/T, T**0])
+
+XTX = np.dot(X.T, X)
+XTy = np.dot(X.T, y)
+
+p = np.dot(np.linalg.inv(XTX), XTy)
+slope, intercept = p # note the order in X
+E = slope * R *-1
+A = np.exp(intercept)
+
+
+#Error Calculation 
+e = y - np.dot(X,p)
+SSE = np.dot(e, e)
+yb = y - np.mean(y)
+SST = np.dot(yb, yb)
+Rsq = 1 - SSE/SST
+
+# Uncertainity Calculation
+alpha = 1 - 0.95
+p, pint, se = regress(X, y, alpha)
+Slope_interval, intercept_interval = pint
+E_interval = Slope_interval * R *-1
+A_interval = np.exp(intercept_interval)
+
+
+#Plotting the results
+import matplotlib.pyplot as plt
+plt.plot(T, Conversion, 'bo')
+Tfit = np.linspace(350,480)
+Conversionfit =-1/( np.exp(A* (Tfit-To)/b *np.exp(-E/(R*Tfit)))) +1
+plt.plot(Tfit, Conversionfit, 'r--')
+plt.xlabel('Temperature (K)')
+plt.ylabel('Conversion, X')
+plt.legend(['Data','Fit'])
+plt.title('Linear Regression')
+plt.savefig('fitt.png')
+
+#Printing the results 
+print(''' The linear regression analysis of ordinary least squares was used to find the parameters  A , and E.  The parameters were estimated to be:
+A = {0:1.10f} min^-1
+E = {1:1.10f} J mol^-1 '''.format(A,E))
+
+print('''
+R-squared = {0} '''.format(Rsq))
+
+print('''
+A is between {0} 
+      at the 95% confidence level'''.format(A_interval))
+
+print('''
+E is between {0}
+      at the 95% confidence level'''.format(E_interval))
+
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+ The linear regression analysis of ordinary least squares was used to find the parameters  A , and E.  The parameters were estimated to be:
+A = 5626.4436108313 min^-1
+E = 34555.3854862479 J mol^-1 
+
+R-squared = 0.9950189561206042 
+
+A is between [  2565.78472404  12338.08409928] 
+      at the 95% confidence level
+
+E is between [ 37121.14565031  31989.62532218]
+      at the 95% confidence level
+#+end_example
+
+** Nonlinear Regression 
+
+#+BEGIN_SRC python
+import numpy as np
+np.set_printoptions(precision=3)
+from pycse import nlinfit
+
+x = np.array([0.5, 0.387, 0.24, 0.136, 0.04, 0.011])
+y = np.array([1.255, 1.25, 1.189, 1.124, 0.783, 0.402])
+
+
+def func(x, a, b):
+    'nonlinear function in a and b to fit to data'
+    return a * x / (b + x)
+
+initial_guess = [1.2, 0.03]
+alpha = 0.05
+pars, pint, se = nlinfit(func, x, y, initial_guess, alpha)
+
+a, b = pars
+aint, bint = np.array(pint)
+print(' The value of a is {}'.format(a))
+print(' The value of b is {}'.format(b))
+print('The 95% confidence interval on a is {0}'.format(aint))
+print('The 95% confidence interval on b is {0}'.format(bint))
+#+END_SRC
+
+#+RESULTS:
+:  The value of a is 1.3275314145379786
+:  The value of b is 0.026461556970080666
+: The 95% confidence interval on a is [ 1.301  1.355]
+: The 95% confidence interval on b is [ 0.024  0.029]
+
+** Exponential Nonlinear regression (txt)
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import cumtrapz
+from scipy.optimize import curve_fit
+from pycse import nlinfit
+
+beta = 3.5 #K/s
+R   = 8.3144598/1000 #Kj/mol
+
+Tt, rd, theta = np.loadtxt('datanlin.txt', delimiter=',').T
+
+def func(T, Ad,  E):
+    return (Ad/beta) * np.exp( (-E)/ ( R * T) ) * theta**2
+
+initial_guess = [1, 1]
+
+pars, pint, se = nlinfit(func, Tt ,  rd , p0=initial_guess, alpha=0.05)
+
+Ad, E = pars 
+
+
+import matplotlib.pyplot as plt
+plt.plot(Tt,rd,'bo ')
+plt.plot(Tt, func(Tt, *pars), 'r-')
+plt.legend(['data','fit'],loc='best')
+plt.xlabel('T(K)')
+plt.ylabel('rd(1/K)')
+plt.title(' Nonlinear Regression Fit Figure(2) ')
+plt.savefig('fiiiit.png')
+
+print('''Using nonlinear regression:
+
+The pre-exponential factor, Ad, is estimated to be Ad = {0:1.5f} 1/s
+
+The barrier to desorption, Edes, is estimated to be  Edes= {1:1.5f} kJ/mol'''.format(Ad, E))
+
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+Using nonlinear regression:
+
+The pre-exponential factor, Ad, is estimated to be Ad = 29112538.07587 1/s
+
+The barrier to desorption, Edes, is estimated to be  Edes= 109.00653 kJ/mol
+:END:
+
+** Model comparison homework (uncertainty)
+
+#+name: exp-data
+| P(psi) | Peak area (Arb. units) |
+|--------+------------------------|
+|     35 |            151.6518418 |
+|     76 |            328.6508225 |
+|    113 |            504.6547444 |
+|    150 |            674.7905193 |
+|    223 |            1013.036621 |
+|    292 |            1387.278987 |
+|    371 |            1770.135017 |
+|    442 |            2255.873689 |
+|    511 |            2571.123695 |
+|    599 |            3361.519734 |
+
+#+BEGIN_SRC python :var data = exp-data
+import numpy as np
+from pycse import regress
+from scipy.optimize import curve_fit
+np.set_printoptions(precision=3)
+import matplotlib.pyplot as plt
+import uncertainties as u
+
+data = np.array(data)
+y = data[:, 0]
+x = data[:, 1]
+
+#Performing linear regression for (a x^3 + b x^2 + c x)
+X = np.column_stack([x**3, x**2, x])
+XTX = np.dot(X.T, X)
+XTy = np.dot(X.T, y)
+
+p = np.dot(np.linalg.inv(XTX), XTy)
+a, b, c = p # note the order in X
+
+
+
+#Error claculation
+e = y - np.dot(X,p)
+SSE = np.dot(e, e)
+yb = y - np.mean(y)
+SST = np.dot(yb, yb)
+Rsq = 1 - SSE/SST
+print(sum(e**2))
+
+#Uncertainity Calculation 
+alpha = 1 - 0.95
+p, pint, se = regress(X, y, alpha)
+
+
+# Evaluating the pressure at peak area= 322 and the uncertainty
+peak =322
+pval = a*(peak)**3 + b*peak**2 + c*peak
+la = u.ufloat(p[0],se[0])
+lb = u.ufloat(p[1],se[1])
+lc = u.ufloat(p[2],se[2])
+pvalu= la*(peak)**3 + lb*peak**2 + lc*peak 
+
+print(''' The value of the pressure that corresponds to a peak area of 322 is P(322)= {0:1.5f} psi
+
+For a confidence level of 68.2%, the uncertainty on this pressure value is = {1} psi'''. format(pval, pvalu))
+
+
+
+
+
+
+#Performing linear regression for (a x^2 + b x)
+X = np.column_stack([x**2, x])
+XTX = np.dot(X.T, X)
+XTy = np.dot(X.T, y)
+
+p = np.dot(np.linalg.inv(XTX), XTy)
+a1, b1 = p # note the order in X
+
+
+
+#Error claculation
+e = y - np.dot(X,p)
+SSE = np.dot(e, e)
+yb = y - np.mean(y)
+SST = np.dot(yb, yb)
+Rsq = 1 - SSE/SST
+
+
+#Uncertainity Calculation 
+alpha = 1 - 0.95
+p, pint, se = regress(X, y, alpha)
+a1, b1 = p
+
+# Evaluating the pressure at peak area= 322 and the uncertainty
+peak =322
+pval = a1*peak**2 + b1*peak
+la = u.ufloat(p[0],se[0])
+lb = u.ufloat(p[1],se[1])
+pvalu= la*(peak)**2 + lb*peak  
+
+print(''' The value of the pressure that corresponds to a peak area of 322 is P(322)= {0:1.5f} psi
+
+For a confidence level of 68.2%, the uncertainty on this pressure value is = {1} psi'''. format(pval, pvalu))
+
+print(sum(e**2))
+
+
+
+
+
+
+
+
+
+
+#Performing linear regression for (a x)
+X = np.column_stack([x])
+XTX = np.dot(X.T, X)
+XTy = np.dot(X.T, y)
+
+p = np.dot(np.linalg.inv(XTX), XTy)
+a, =p
+
+
+
+#Error claculation
+e = y - np.dot(X,p)
+SSE = np.dot(e, e)
+yb = y - np.mean(y)
+SST = np.dot(yb, yb)
+Rsq = 1 - SSE/SST
+
+
+#Uncertainity Calculation 
+alpha = 1 - 0.95
+p, pint, se = regress(X, y, alpha)
+
+
+# Evaluating the pressure at peak area= 322 and the uncertainty
+peak =322
+pval = a*(peak)
+la = u.ufloat(p[0],se[0])
+pvalu= la*(peak) 
+
+print(''' The value of the pressure that corresponds to a peak area of 322 is P(322)= {0:1.5f} psi
+
+For a confidence level of 68.2%, the uncertainty on this pressure value is = {1} psi'''. format(pval, pvalu))
+
+print(sum(e**2))
+
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+241.708202781
+ The value of the pressure that corresponds to a peak area of 322 is P(322)= 72.39683 psi
+
+For a confidence level of 68.2%, the uncertainty on this pressure value is = 72.4+/-2.8 psi
+ The value of the pressure that corresponds to a peak area of 322 is P(322)= 74.81313 psi
+
+For a confidence level of 68.2%, the uncertainty on this pressure value is = 74.8+/-1.3 psi
+312.679794612
+ The value of the pressure that corresponds to a peak area of 322 is P(322)= 62.41798 psi
+
+For a confidence level of 68.2%, the uncertainty on this pressure value is = 62.4+/-1.5 psi
+5748.91969213
+#+end_example
+
+** Model comparison (residual)
+
+The residual sum of squares (RSS) is the sum of the squares of residuals. It is a measure of the discrepancy between the data and an estimation model. RSS can be expressed as 
+
+\( RSS = \sum\limits_{i=1}^n = ( y_i - f(x_i) )^2)\)
+
+The sums of the the squares for each model are compared to determine the model that best fits the given experimental data. The model that has the smallest sum of squares is model B. Therefore, it is the rate law that best describes the reaction.
+
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from pycse import nlinfit
+RN , ra , Pa , Pc , Pb  = np.loadtxt('dfdata.txt', delimiter=',').T
+
+#For model A.
+def modelA( Pa, k1 , Ka1 , Ke1):
+    return (k1 * Pa * Pb) / ( 1 + Ka1 * Pc + Ke1 * Pa)
+
+pA, pintA, seA = nlinfit(modelA, Pa, ra, [ 1 , 1 , 1] , alpha=0.05)
+
+k1 , Ka1 , Ke1  = pA 
+k1int , Ka1int , Ke1int  = pintA
+RSSA =[]
+for i in range (7):
+    RSA= (ra[i] - (k1 * Pa[i] * Pb[i]) / ( 1 + Ka1 * Pc[i] + Ke1 * Pa[i]))**2
+    RSSA.append(RSA)
+
+
+
+
+
+#For model B.
+def modelB( Pa, k2 , Ke2):
+   return (k2 * Pa * Pb) / ( 1 + Ke2 * Pa)
+
+pB, pintB, seB = nlinfit(modelB, Pa, ra, [ 1 , 1] , alpha=0.05)
+
+k2 , Ke2 = pB 
+k2int , Ke2int = pintB 
+RSSB = []
+for i in range (7):
+    RSB= (ra[i] - (k2 * Pa[i] * Pb[i]) / ( 1 + Ke2 * Pa[i]))**2
+    RSSB.append(RSB)
+
+
+
+
+
+#For model C.
+def modelC( Pa, k3 , Ke3):
+    return (k3 * Pa * Pb) / ( 1 + Ke3 * Pa)**2
+
+pC, pintC, seC = nlinfit(modelC, Pa, ra, [ 1 , 1 ] , alpha=0.05)
+
+k3, Ke3  = pC 
+k3int, Ke3int  = pintC 
+RSSC=[]
+for i in range (7):
+    RSC= (ra[i] - (k3 * Pa[i] * Pb[i]) / ( 1 + Ke3 * Pa[i])**2)**2
+    RSSC.append(RSC)
+
+
+
+
+
+#For model D.
+def modelD( Pa, k4, a, b):
+    return k4 * Pa**a * Pb**b
+pD, pintD, seD = nlinfit(modelD, Pa, ra, [1 , 1,1] , alpha=0.05)
+
+k4, a, b  = pD 
+k4int, aint, bint  = pintD 
+
+RSSD=[]
+for i in range (7):
+    RSD= (ra[i] - k4 * Pa[i]**a * Pb[i]**b)**2
+    RSSD.append(RSD)
+
+
+
+
+#The results
+
+print(''' At the 95% confidence level, the sum of the least squares for the models are:
+
+\( \sigma_A^2\)= {0}
+
+\( \sigma_B^2\)= {1}
+
+\( \sigma_C^2\)= {2}
+
+\( \sigma_D^2\)= {3} 
+
+'''.format(sum(RSSA), sum(RSSB),sum(RSSC), sum(RSSD)))
+
+print('''For model B,
+
+k = {0:1.5f}(in appropriate units)
+
+K_E = {1:1.5f} (in appropriate units)
+
+'''.format(k2, Ke2))
+
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+ At the 95% confidence level, the sum of the least squares for the models are:
+
+\( \sigma_A^2\)= 0.02642508015293848
+
+\( \sigma_B^2\)= 0.02421105179766511
+
+\( \sigma_C^2\)= 0.4337940206419927
+
+\( \sigma_D^2\)= 0.2571931650654875 
+
+
+For model B,
+
+k = 3.18678(in appropriate units)
+
+K_E = 2.10133 (in appropriate units)
+
+
+:END:
+
+** Other problems??
+* Profit Analysis
+** Gen Eqs
+$C_{j} = F_j reactant_{cost}$
+$C_R = V_R operating_{cost}$
+Profit = product value - operating cost
+** Maximize profit in pfr func(V)
+#+BEGIN_SRC python
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+k = 30.0
+CX0 = 2.5 # kmol / m^3
+v0 = 12.0 # m^3 / min
+FX0 = CX0 * v0
+FY0 = 0.0
+
+def dFdV(F, V):
+    Fx, Fy = F
+    Cx = Fx / v0
+    r = k * Cx
+    rx = -r
+    ry =  r
+    dFxdV = rx
+    dFydV = ry
+    return [dFxdV, dFydV]
+
+Vspan = np.linspace(0, 3)
+
+sol = odeint(dFdV, [FX0, FY0], Vspan)
+
+Fy = sol[:, 1]
+
+V_Y = 1.50 # $/kmol
+C_R = 2.50 # $/m^3/min
+
+product_value = Fy * V_Y
+operating_cost = Vspan * C_R
+
+profit = product_value - operating_cost
+plt.plot(Vspan, profit)
+plt.xlabel('Reactor volume (m$^3$)')
+plt.ylabel('Profit ($)')
+plt.savefig('pprofit.png')
+print(max(profit))
+print(Vspan[25])
+#+END_SRC
+
+#+RESULTS:
+: 40.1931413935
+: 1.5306122449
+
+[[./pprofit.png]]
+** Maximize profit in CSTR func(V)
+#+BEGIN_SRC python
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+from scipy.optimize import fsolve
+
+
+k = 30.0
+CX0 = 2.5 # kmol / m^3
+v0 = 12.0 # m^3 / min
+FX0 = CX0 * v0
+
+def objective(V, Fx):
+    Cx= Fx/v0
+    rx= -k * Cx
+    return FX0 - Fx + rx *V
+
+V = np.linspace(0.4, 5)
+
+Fxs=[]
+for i in range(50):
+    sol,= fsolve(objective, 0, args=(V[i]))
+    Fxs.append(sol)
+
+Fx=np.asarray(Fxs)
+Fy= FX0- Fx
+
+V_Y=1.5
+C_R= 2.5
+
+product_value = Fy * V_Y
+operating_cost = V * C_R
+
+profit= product_value - operating_cost
+
+print(max(profit))
+print(V[24])
+plt.plot(V, profit)
+plt.xlabel('Reactor volume (m$^3$)')
+plt.ylabel('Profit ($)')
+plt.savefig('cstprofit.png')
+#+END_SRC
+
+#+RESULTS:
+: 32.1827315542
+: 2.65306122449
+
+[[./cstprofit.png]]
+#+RESULTS:
+
+** Minimize cost in CSTR func(V,v0)
+#+BEGIN_SRC python
+from scipy.optimize import fsolve
+import numpy as np
+
+k = 0.1    # rate constant 1/min
+Cx0 = 1.5  # initial concentration
+Fy = 90.0  # exit molar flow of Y
+
+
+def objective(V, v0):
+    Fx0 = Cx0 * v0
+    Fx = Fx0 - Fy
+    Cx = Fx / v0
+    rx = -k * Cx
+    return Fx0 - Fx + rx * V
+
+v0 = np.linspace(66, 200)
+
+reactor_cost = 0.1  # $/m^3
+Xcost = 1.20        # $/kmol
+
+# this is a decorator that makes cost work element-wise
+@np.vectorize
+def cost(v0):
+    V, = fsolve(objective, 10000, args=(v0,))
+    CR = reactor_cost * V
+    CX = v0 * Cx0 * Xcost
+    return (CR + CX) / Fy  # cost in $/mol Y
+
+import matplotlib.pyplot as plt
+plt.plot(v0, cost(v0))
+plt.xlabel('volumetric flow')
+plt.ylabel('Cost ($/mol)')
+plt.savefig('mincost.png')
+
+from scipy.optimize import fmin
+v_opt, = fmin(cost, 120)
+print('Lowest cost is at a volumetric flow of {0} m^3/min'.format(v_opt))
+#+END_SRC
+
+#+RESULTS:
+: Optimization terminated successfully.
+:          Current function value: 3.655521
+:          Iterations: 19
+:          Function evaluations: 38
+: Lowest cost is at a volumetric flow of 104.72140502929688 m^3/min
+
+[[./mincost.png]]
+** Profit with uncertainty
+
+Given 
+
+Cx0= 2.5 +/- 0.2 kmol/m3
+k  = 30 +/-5 (1/min)
+Yvalue= $1.5 /kmol
+Operating cost= $2.50/ min/m3
+V= 1.5 m3
+
+*** CSTR U
+
+#+BEGIN_SRC python
+import uncertainties as u
+from scipy.optimize import fsolve
+
+V = 1.5  # reactor volume m^3
+Ca0 = u.ufloat(2.5,0.2)
+v0   =5
+Fa0 = Ca0*v0
+k = u.ufloat(30, 5)
+Y_v= 1.5 
+O_c=2.5
+
+# Step 1
+def func(Ca, v0, k, Fa0, V):
+    "Mole balance for a CSTR. Solve this equation for func(Ca)=0"
+    Fa = v0 * Ca     # exit molar flow of A
+    ra = -k * Ca  # rate of reaction of A L/mol/h
+    return Fa0 - Fa + V * ra
+
+# Step 2
+def Ca_solve(v0, k, Fa0, V):
+    'wrap fsolve to pass parameters as float or units'
+    # this line is a little fragile. You must put [0] at the end or
+    # you get the NotImplemented result
+    guess = 0.1 * Fa0 / v0
+    sol = fsolve(func, guess, args=(v0, k, Fa0, V))[0]
+    return sol
+
+# Step 3
+Ca_exit = u.wrap(Ca_solve)(v0, k, Fa0, V)
+Fa = Ca_exit * v0
+Fb = Fa0-Fa
+operating_cost= O_c* V
+product_value= 1.5*Fb
+print(Ca_exit)
+Profit= product_value-operating_cost
+print(' The profit is ${}   /min '.format(Profit))
+
+#+END_SRC
+
+#+RESULTS:
+: 0.25+/-0.04
+:  The profit is $13.1+/-1.4   /min 
+
+*** CSTR (MC)
+
+#+BEGIN_SRC python
+import numpy as np
+from scipy.optimize import fsolve
+
+N = 100000    # number of MC samples
+V =  1.5   # L
+Ca0 = np.random.normal(2.5, 0.2, (1,N))
+v0   =5
+Fa0 = Ca0*v0
+k= np.random.normal(30,5, (1,N))
+Y_v= 1.5 
+O_c=2.5
+
+# create the array to store the results in
+# It is usually more efficient to create arrays then fill them in.
+SOL = np.empty(k.shape)
+
+for i in range(N):
+    def func(Ca):
+        ra = -k[0,i] * Ca
+        return Fa0[0,i] - v0* Ca + V * ra
+    guess = 0.1 * Fa0[0,i] / v0  # guessing 90% conversion
+    SOL[0,i] = fsolve(func, guess)[0]
+
+print('Ca(exit) = {0}+/-{1}'.format(np.mean(SOL), np.std(SOL)))
+
+Ca_exit=np.random.normal(np.mean(SOL), np.std(SOL), (1,N))
+
+#Method 1
+Fa= Ca_exit/v0
+Fb= Fa0-Fa
+op_cost= 2.5*V
+product_value= Fb*1.5
+profit= product_value - op_cost
+
+print('profit = {0}+/-{1}'.format(np.mean(profit),np.std(profit)))
+
+
+#Method 2
+soln=np.empty(k.shape)
+for i in range(N):
+    def profit(p):
+        Fa= Ca_exit[0,i]/v0
+        Fb= Fa0[0,i]- Fa
+        op_cost= 2.5 * V
+        product_value= Fb * 1.5
+        return product_value - op_cost - p
+    guess= 5
+    soln[0,i]= fsolve(profit, guess)[0]
+print('Profit = {0} +/- {1}'.format(np.mean(soln), np.std(soln)))
+    
+    
+
+#+END_SRC
+
+#+RESULTS:
+: Ca(exit) = 0.2560335001962425+/-0.04630544451892642
+: profit = 14.919055584556844+/-1.495694416194747
+: Profit = 14.919055584556844 +/- 1.495694416194747
+
+*** CSTR range of v (does not work)
+#+BEGIN_SRC python
+from scipy.optimize import fsolve
+import numpy as np
+import uncertainties as u
+
+k = u.ufloat(0.1, 0.01)    # rate constant 1/min
+Cx0 = 1.5  # initial concentration
+Fy = 90.0  # exit molar flow of Y
+V = 1000
+def objective(V, v0,k,Cx0, Fx):
+    Fx0 = Cx0 * v0
+    Fx = Fx0 - Fy
+    Cx = Fx / v0
+    rx = -k * Cx
+    return Fx0 - Fx + rx * V
+
+v0 = np.linspace(66, 200)
+
+reactor_cost = 0.1  # $/m^3
+Xcost = 1.20        # $/kmol
+
+# this is a decorator that makes cost work element-wise
+@np.vectorize
+def cost(v0):
+    V, = fsolve(objective, 10000, args=(v0,))
+    CR = reactor_cost * V
+    CX = v0 * Cx0 * Xcost
+    return (CR + CX) / Fy  # cost in $/mol Y
+
+from scipy.optimize import fmin
+
+def Fa_solve(v0, k, Cx0, V):
+    'wrap fsolve to pass parameters as float or units'
+    # this line is a little fragile. You must put [0] at the end or
+    # you get the NotImplemented result
+    sol= fsolve(func,guess, args=(v0,k,Fx0,V)[0]
+    return sol
+
+Fa= u.wrap(Fa_solve)(v0,k,Cx0, V)
+#+END_SRC
+
+#+RESULTS:
+
+*** PFR 
+
+#+BEGIN_SRC python :results output org drawer
+#+BEGIN_SRC python
+import uncertainties as u
+from scipy.optimize import fsolve
+from scipy.integrate import odeint
+import numpy as np
+
+V = 1.5  # reactor volume m^3
+Ca0 = u.ufloat(2.5,0.2)
+v0   =5
+Fa0 = Ca0*v0
+k = 30#u.ufloat(30, 5)
+Y_v= 1.5 
+O_c=2.5
+
+#Step 1 
+def ode(Fa,V):
+    Ca=Fa/v0
+    ra = -k * Ca
+    return ra
+
+Vspan=np.linspace(0,V)
+# Step 2
+def Fa_solve(v0, k, Fa0):
+    'wrap fsolve to pass parameters as float or units'
+    # this line is a little fragile. You must put [0] at the end or
+    # you get the NotImplemented result
+    sol = odeint(ode, Fa0,Vspan)[0]
+    print(sol)
+    return sol
+
+# Step 3
+Fa_exit = u.wrap(Fa_solve)(v0, k, Fa0)
+print(Fa_exit)
+#Fa = Ca_exit * v0
+#Fb = Fa0-Fa
+#operating_cost= O_c* V
+#product_value= 1.5*Fb
+#Profit= product_value-operating_cost
+#print(' The profit is ${}   /min '.format(Profit))
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+[ 12.5]
+NotImplemented
+:END:
+
+** Cost with uncertainty
+** Minimize cost in pfr 
+
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+k = 30.0
+CX0 = 2.5
+FY0 = 0.0
+
+def dFdV(Fx, V, v):
+    Cx = Fx / v0
+    r = k * Cx
+    rx = -r
+    dFxdV = rx
+    return dFxdV
+
+v0 = np.linspace(10, 100)
+Vv= 2
+Vspan = np.linspace(0, Vv)
+CR=[]
+CX=[]
+Fx=[]
+FX0=[]
+
+for v in v0:
+    sol = odeint(dFdV, CX0*v0, Vspan, args=(v,))
+    Fx=+ sol[-1]
+    FX0=+CX0*v
+    CR =+  2.5*Vv
+    CX =+  CX0*v*1.5
+    
+Cost = (CR+CX)/(FX0-Fx)
+
+print(Cost)
+
+print(min(Cost))
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+[ 1.52037686  1.52113234  1.52258673  1.52494125  1.52834249  1.53288595
+  1.53862678  1.54559137  1.55378726  1.56321068  1.57385214  1.58570019
+  1.59874404  1.6129753   1.62838905  1.64498461  1.66276593  1.68174195
+  1.70192674  1.72333968  1.7460056   1.7699549   1.79522378  1.82185438
+  1.84989508  1.87940084  1.91043352  1.94306239  1.97736462  2.01342596
+  2.05134145  2.09121626  2.13316671  2.17732139  2.22382253  2.27282748
+  2.32451052  2.37906494  2.43670542  2.49767087  2.56222769  2.63067363
+  2.70334238  2.7806089   2.86289589  2.95068142  3.04450812  3.14499433
+  3.25284759  3.36888121]
+1.52037686379
+:END:
+
+* Here's the break down
+** Monte Carlo
+
+2 NO2Cl(g) ¡V> 2NO2(g) + Cl2(g)	KC = 0.558
+
+should read
+
+2 NO2Cl(g) <¡V> 2NO2(g) + Cl2(g)	KC = 0.558
+
+i.e. it is a reversible reaction
+
+#+BEGIN_SRC python
+import numpy as np
+from scipy.optimize import fsolve
+
+N = 10000    # number of MC samples
+V =  66000   # L
+Kc = 0.558 
+Ca0 = np.random.normal(1, 0.05, (1, N))
+
+
+# create the array to store the results in
+# It is usually more efficient to create arrays then fill them in.
+SOL = np.empty(Ca0.shape)
+
+for i in range(N):
+    def extent(xi):
+        return ( (2*xi)**2 * (xi) )/(Ca0[0,i]-2*xi)**2 - Kc
+    guess = 0.01  # guessing 90% conversion
+    SOL[0,i] = fsolve(extent, guess)[0]
+
+print('Reaction extent = {0}+/-{1}'.format(np.mean(SOL), np.std(SOL)))
+
+# This is an approximate % uncertainty (about 2%)
+print(np.std(SOL) / np.mean(SOL) * 100 / 2)
+#+END_SRC
+
+#+RESULTS:
+: Reaction extent = 0.2903477725470413+/-0.01188074295258209
+: 2.04595042152
+
+** Debug
+
+** Profit Uncertainty
+C_X0 = 2.5 +/- 0.2 kmol/m3
+
+k = 30 +/- 5 (units are 1/min)
+
+Yvalue = $1.50 per kmol
+
+Operating cost = $2.50 /min /m3
+
+reactor volume is 1.5 m3
+
+** fit
+
+* Debug
+** Examples
+** Codes
+#+begin_src emacs-lisp
+;; make latex equations larger
+(plist-put org-format-latex-options :scale 1.5)
+
+
+;; make hotkeys for triggering spell check 
+;; this is how i find your typo's so quickly when checking your homework ^.^
+(global-set-key (kbd "<xf86new>") 'flyspell-buffer)  ;; f4 key
+
+;; navigational controls
+(global-set-key (kbd "<mouse-9>") 'next-buffer)      ;; Side arrow up on mouse
+(global-set-key (kbd "<mouse-8>") 'previous-buffer)  ;; Side arrow down on mouse
+
+;; Hotkeys for python mode
+(global-set-key (kbd "C-c <left>") 'python-indent-shift-left) ;; Indent a region left
+(global-set-key (kbd "C-c <right>") 'python-indent-shift-right) ;; Indent a region right
+(global-set-key (kbd "C-c <down>") 'comment-dwim)  ;; Comment a region quickly
+
+;; Highlights the selected line when in lisp or org files
+(add-hook 'org-mode-hook 'hl-line-mode)
+(add-hook 'emacs-lisp-mode-hook 'hl-line-mode)
+#+END_SRC
+
+** Do that problem!
+* Final Exam 00000000000000000000
+* Practice Problems
+** 1Non constant density batch
+onw
+** 2Uncertainty profit
+#$ Compound X with concentration of $C_{X0} = 2.5 \pm 0.2 $kmol / m$^3$
+#$ at a flow rate of 12 \pm 1 m$^3$/min is converted to Y in a plug
+#$ flow reactor. The rate law is $r= k C_X$, with $k = 30 \pm
+#$ 5$/min. The value of Y is \$1.5/kmol. The cost of operation is
+#$ \$2.50 per minute per m$^3$. Estimate the 95 \% confidence interval
+#$ on the profit if the reactor is 1.5 m$^3$ in volume. Assume the cost
+#$ of X is negligible, and there is no separation cost. Also assume the reaction is $X \rightarrow Y$. 
+
+#$ \section{Monte Carlo Method}
+#! Try to use Monte Carlo Method to solve the problem first.
+#$ We could conduct that the exit concentration of x could be calculated as:
+#$ \begin{equation}
+#$ C_x(exit) = C_{x0}e^{-k\frac{V}{\nu_0}}
+#$ \end{equation}
+#! It could also be calculated by using {\color{darkgreen} scipy.integrate.odeint} with given $r_x$
+#! Besides, the 95\% confidence interval should be $1.96\sigma$.
+#$ \subsection{Direct calculation}
+
+*** Monte Carlo pfr odeint 
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.integrate import odeint
+
+#Define variables
+N = 10000  # number of MC samples
+Cx0= np.random.normal(2.5,0.2,N)# kmol/m^3
+v0 = np.random.normal(12,1, N)# m^3/min
+k = np.random.normal(30, 5, N) # 1/min
+Yv= 1.5 #$/kmol
+Vol = 1.5 #m^3
+Op= 2.5 #$/min/m^3
+Xv = 0
+
+X = []
+for K, CX0,V0 in zip(k,Cx0,v0):
+    def ode(X, V):
+        rx= - K*(CX0*(1-X))
+        return -rx/(V0*CX0)
+    X0=0
+    Vspan=np.linspace(0,Vol)
+    sol=odeint(ode,X0,Vspan)
+    X+=[sol[-1][0]]
+
+avgx=np.average(X)
+stdx=np.std(X)
+X=np.random.normal(avgx, stdx,N)
+FX0 = v0*Cx0
+Fx = FX0- X*FX0
+Fy= FX0-Fx
+profit = Yv*Fy-Op*Vol
+pavg = np.average(profit)
+pstd = np.std(profit)
+print('For the 95% confidence interval, the  profit is {0:1.5f} +/- {1:1.5f} $/min'.format(pavg, 2*pstd))
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+For the 95% confidence interval, the  profit is 39.90418 +/- 10.32538 $/min
+:END:
+
+*** Monte Carlo Pfr analytical 
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import fsolve
+
+#Define variables
+N = 10000  # number of MC samples
+Cx0= np.random.normal(2.5,0.2,N)# kmol/m^3
+v0 = np.random.normal(12,1, N)# m^3/min
+k = np.random.normal(30, 5, N) # 1/min
+Yv= 1.5 #$/kmol
+Vol = 1.5 #m^3
+Op= 2.5 #$/min/m^3
+Xv = 0
+
+#Define function
+def func(Cx,CX0,K,V0):
+    return CX0*np.exp(-K* Vol/V0)-Cx
+
+CX = sorted([fsolve(func, 0.1, args=(CX0,K,V0))[0]
+     for (CX0,K,V0) in zip(Cx0,k,v0)])
+Cxavg=np.average(CX)
+Cxstd=np.std(CX)
+Cx=np.random.normal(Cxavg,Cxstd, N)
+X =(Cx0-Cx)/Cx0
+FX0 = v0*Cx0
+Fx = FX0- X*FX0
+Fy= FX0-Fx
+profit = Yv*Fy-Op*Vol
+pavg = np.average(profit)
+pstd = np.std(profit)
+print('For the 95% confidence interval, the  profit is {0:1.5f} +/- {1:1.5f} $/min'.format(pavg, 2*pstd))
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+For the 95% confidence interval, the  profit is 39.89376 +/- 10.42534 $/min
+:END:
+
+*** Uncertainties anal
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import fsolve
+import uncertainties as u
+
+#Define variables
+Cx0= u.ufloat(2.5,0.2)# kmol/m^3
+v0 = u.ufloat(12,1)# m^3/min
+k = u.ufloat(30, 5) # 1/min
+Yv= 1.5 #$/kmol
+Vol = 1.5 #m^3
+Op= 2.5 #$/min/m^3
+Xv = 0
+
+#Define function
+def func(Cx,CX0,K,V0):
+    return CX0*np.exp(-K* Vol/V0)-Cx
+
+def solve(CX0,K,V0):
+    return fsolve(func,0.1, args=(CX0,K,V0))[0]
+
+Cx = u.wrap(solve)(Cx0, k, v0)
+X =(Cx0-Cx)/Cx0
+FX0 = v0*Cx0
+Fx = FX0- X*FX0
+Fy= FX0-Fx
+profit = Yv*Fy-Op*Vol
+
+print('For the 95% confidence interval, the  profit is {0} +/- {1}  $/min'.format(profit.nominal_value, 2*profit.s))
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+For the 95% confidence interval, the  profit is 40.19170143647959 +/- 9.77573485350806  $/min
+:END:
+
+*** Uncers pfr odeint  
+#+BEGIN_SRC python :results output org drawer
+import uncertainties as u
+import numpy as np
+from scipy.integrate import odeint
+
+np.set_printoptions (precision = 4)
+
+Cx0_2 = u.ufloat (2.5, 0.2) # kmol/m$^3$
+v_2 = u.ufloat (12.0, 1.0) # m^3/min
+k_2 = u.ufloat (30.0, 5.0) # 1/min
+Cost = 2.5 # Dollar/min/m^3
+Y_value = 1.5 # Dollar/kmol
+V = 1.5 # m^3
+@u.wrap
+def pfr2 (k, v, Cx0):
+    
+    def ode2 (Fx, V):
+        Cx = Fx / v
+        rx = -k * Cx
+        return rx
+        
+    Fx0 = Cx0 * v
+    Vspan = [0, V] 
+    sol = odeint (ode2, Fx0, Vspan) #solve the above ODE
+    Fy = Fx0 - sol[-1][0]
+    return Fy # reture exit molar flow of y
+
+Fy2 = pfr2(k_2, v_2, Cx0_2) # Exit molar flow of y
+profit = Fy2 * Y_value - V * Cost # Calculate the profit
+
+avg = profit.nominal_value #return the mean value of profit
+sdv = profit.std_dev #return the standard deviation of profit
+print('For the 95% confidence interval, the  profit is {0} +/- {1}  $/min'.format(avg, 1.96*sdv))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+For the 95% confidence interval, the  profit is 40.19170145586689 +/- 9.580220163115808  $/min
+:END:
+
+** 3Thiele-1
+done
+** 4Quiz-3
+'''The irreversible reaction A \rightarrow B occurs in a constant volume batch reactor over a catalyst. The apparent first order reaction $k_a$ decreases with time because of catalyst deactivation. It is known that:
+k_a = k / (1 + k_d t)
+where k = 0.6 1/hr. It takes two hours for the reaction to reach 50\% conversion. Find k_d.''
+** 5EB-trans-batch
+'''
+the reaction A + B $\leftrightharpoons$ C is carried out in an adiabatic, constant volume batch reactor. The rate law is
+$r = k1 * C_A^{0.5} * C_B^{0.5} - k2 * C_C$
+Initial temperature = 100 degC
+k1 (373K) = 2e-3 1/s           E1 = 100 kJ/mol
+k2 (373K) = 3e-5 1/s           E2 = 150 kJ/mol
+CA0 = 0.1 mol / L              CpA = 25 J/mol/K
+CB0 = 0.125 mol / L            CpB = 25 J/mol/K
+Hrx (298K) = -40 kJ /mol A     CpC = 40 J/mol/K
+a) Plot the concentrations and temperature as a function of time. 
+b) Plot the equilibrium conversion as a function of temperature
+'''
+
+#+BEGIN_SRC python
+import numpy as np
+from scipy.integrate import odeint
+
+T0 = 273.15 + 100
+CA0 = 0.1
+CB0=0.125
+CC0=0
+
+# heat capacities
+cpa = cpb = 25  # cal/mol/K
+cpc = 40.0        # cal/mol/K
+dcp=cpc-cpa-cpb
+
+# rate constants
+k10= 2e-3      # 1/s at 373
+E1 = 100000     #J/mol
+k20=  3e-5      # 1/s at 373 
+E2 = 150000
+R = 8.314       # J/K/mol
+Hrx = -40000   #J/molA
+
+def adiabatic_batch(Y, t):
+    Ca, Cb, Cc, T = Y
+
+    # temperature dependent rate constant
+    k1 = k10 * np.exp(-E1 / R * (1.0 / T - 1.0 / T0))
+    k2 = k20 * np.exp(-E2 / R * (1.0 / T - 1.0 / T0))
+    r = k1 * Ca**0.5 * Cb**0.5 - k2 * Cc
+
+    dCadt= -r 
+    dCbdt= -r
+    dCcdt= r
+
+    dH= Hrx - dcp*(T- 298)
+    # energy balance
+    dTdt = -(dH * r)/(Ca*cpa+Cb*cpb+Cc*cpc)
+    return [dCadt, dCbdt,dCcdt, dTdt]
+
+# initial conditions
+Y0 = [CA0,CB0,0, T0]
+
+tspan = np.linspace(0, 10,1000)
+sol = odeint(adiabatic_batch, Y0, tspan)
+
+import matplotlib.pyplot as plt
+plt.plot(tspan, sol[:,3])
+plt.xlabel('Time (min)')
+plt.ylabel('Temperature (K)')
+plt.savefig('PLOTDAT.png')
+plt.figure()
+
+T= np.linspace(100,500,201)
+k1 = k10 * np.exp(-E1 / R * (1.0 / T - 1.0 / T0))
+k2 = k20 * np.exp(-E2 / R * (1.0 / T - 1.0 / T0))
+K=k1/k2
+X= K/(1+K)
+plt.plot(T, X)
+plt.xlabel('Time (min)')
+plt.ylabel('Temperature (K)')
+plt.savefig('PLOTDIS.png')
+print(X[1])
+#+END_SRC
+
+#+RESULTS:
+: 1.0
+
+[[./PLOTDAT.png]]
+[[./PLOTDIS.png]]
+** 6Eb-rev-pdrop
+The reaction 2A $\leftrightharpoons$ C is carried out in a packed bed reactor with a constant ambient temperature heat exchanger. There is a pressure drop along the length of the reactor.
+The parameters for this problem are summarized here:
+Cpa = 40.0 J / mol / K
+Cpc = 80.0 J / mol / K
+Hrx = -40,000 J/mol
+Ea = 41,800 J / mol / K
+k = 0.5 L**2/kg/min/mol at 450 K
+Kc = 25,000 L/mol at 450 K
+Ca0 = 0.271 mol / L
+T0 = 450 K
+FA0 = 5 mol / min
+Ta = 500 K
+Ua = 0.015=0.8 J/kg/min/K
+$\alpha$ = 0.015 1/kg  (pressure drop parameter)
+P0 = 10 atm
+pure A is fed to the reactor.
+a) plot the conversion, reduced pressure (y), and temperature in the reactor from W=0 kg to W = 20 kg
+b) Explain what happens around 16 kg of catalyst
+'''
+#+BEGIN_SRC python
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+Fa0 =5    # mol/min
+Ca0 =0.271# mol / L
+
+P0=10 #atm
+alpha=0.015 #1/kg
+
+v0 = Fa0/Ca0    # initial volumetric flow
+Ft0 =Fa0
+
+T0 =450 # K
+
+Hrx =-40000 # J/mol
+
+Cpa = 40 # J/mol/K
+Cpc = 80 
+
+Ea=41800 #J/mol/K
+R = 8.314 #J/mol/K
+k0 = 0.5 #L**2/kg/min/mol at 450 K
+Kc0= 25000 #L/mol at 450 K
+
+Ta = 500 # K, ambient heat exchanger temperature
+Ua = 0.8 # 0.015 J/kg/min/ K overall heat transfer coefficient
+
+def PBR(Y, W):
+    Fa, Fc, y, T = Y  # unpack variables
+
+    P = y*P0
+    Ft = Fa + Fc
+
+    v = v0 * Ft / Ft0 * T / T0 *P0/P
+
+    Ca = Fa / v
+    Cc = Fc / v
+
+    k = k0*np.exp(-Ea/R * (1.0/T - 1.0/T0))
+    Kc= Kc0*np.exp(-Hrx/R * (1.0/T - 1.0/T0))
+
+    r = k * (Ca**2- Cc/Kc)
+    ra = -2*r
+    rc = r
+    
+    Hrxn = Hrx + (Cpc - 2*Cpa) * (T - T0)
+
+    dFadW = ra
+    dFcdW = rc
+    dydW  =-alpha/(2*y)* Ft/Ft0 *T/T0
+
+    Qdot = Ua * (Ta - T)
+    dTdW = (-Hrxn * r + Qdot) / (Fa * Cpa + Fc * Cpc)
+
+    return [dFadW,dFcdW,dydW,dTdW]
+
+
+Wspan = np.linspace(0, 20,100) # Weight of catalyest in kg
+Y0 = [Fa0,0,1, T0]
+
+sol = odeint(PBR, Y0, Wspan)
+
+Fa = sol[:,0]
+Fc = sol[:,1]
+y  = sol[:,2]
+T  = sol[:,3]
+
+X=(Fa0-Fa)/Fa0
+
+plt.subplot(1,2,1)
+plt.plot(Wspan,X )
+plt.xlabel('Weight of Catalyst, W (kg) ')
+plt.ylabel('Conversion, X')
+plt.title(' Conversion vs W')
+print(T[-1])
+plt.subplot(1,2,2)
+plt.plot(Wspan, y)
+plt.title(' Reduced Pressure vs W ')
+plt.xlabel('Weight of Catalyst, W (kg) ')
+plt.ylabel('Reduced Pressure, y')
+plt.tight_layout()
+plt.savefig('ploti.png')
+plt.figure()
+plt.plot(Wspan, T)
+plt.xlabel('Weight of Catalyst, W (kg) ')
+plt.ylabel('Temperature, T(K)')
+plt.title(' Temperature vs Weight of Catalyst')
+plt.savefig('ploti2.png')
+
+#+END_SRC
+
+#+RESULTS:
+: 873.215405824
+
+** 7Eb-pfr-cstr
+'''The elementary, irreversible liquid-phase reaction reaction $A + B \rightarrow C$ is carried out adiabatically in a flow reactor. An equal molar flow of A and B enters the reactor at 27 degC, the volumetric flow is 2 L/s and CA0=0.1 kmol/m$^3$. You can assume an elementary rate law
+ 
+a. Calculate the PFR volume required to achieve 85% conversion. What is the 
+exit temperature? 
+b. Calculate the CSTR volume required to achieve 85% conversion. What is the 
+exit temperature? 
+c. What is the maximum inlet temperature you could have to avoid exceeding 
+an exit temperature of 550K? 
+ 
+Additional information 
+H_A (273K)=-20 kcal/mol 
+H_B (273K)=-15 kcal/mol 
+H_C (273K)=-41 kcal/mol 
+CP,A = CP,B = 15 cal/mol/K              CP,C=30 cal/mol/K 
+k(300K) = 0.01 L/mol/s                  E = 10 kcal/mol 
+'''
+*** PFR
+#+BEGIN_SRC python
+import numpy as np
+from scipy.integrate import odeint
+
+Ha= -20 #kcal/mol 
+Hb= -15 #kcal/mol 
+Hc= -41 #kcal/mol 
+Hrx = (Hc-Hb-Ha)*1000     # Reaction enthalpy cal/mol at 273
+
+
+Tfeed = 27+273.15     # Feed temperature in K
+k1 = 0.01         # Rate constant at T1
+T1 = 300        # Reference T for the rate constant
+E = 10000       # Activation energy
+R = 1.9872036
+
+Ca0 =Cb0= 0.1       # initial concentration mol / L
+v0 = 2
+Fa0=Fb0 = Ca0 * v0
+Fc0= 0
+
+
+CpA = 15      # heat capacity cal/mol/K
+CpB = 15
+CpC = 30
+dCp = CpC - CpB - CpA   # change in heat capacity due to reaction
+
+def adiabatic_pfr(Y, V):
+    Fa,Fb, Fc, T = Y  # unpack variables
+    Ca1= Fa/v0
+    Cb1= Fb/v0
+
+    k = k1 * np.exp(-E / R * (1.0 / T - 1.0 / T1))
+    r = k * (Ca1 *Cb1)
+    ra = -r
+    rb= - r
+    rc= r
+
+    # thermodynamic reaction energy
+    Hrxn = Hrx + dCp * (T - Tfeed)
+
+    dFadV = ra
+    dFbdV = rb
+    dFcdV = rc
+    dTdV = (-Hrxn * r) / (Fa * CpA + Fb * CpB + Fc * CpC)
+
+    return [dFadV,dFbdV,dFcdV, dTdV]
+
+
+Vspan = np.linspace(0, 302.58) # volume in L
+Y0 = [Fa0,Fb0,Fc0, Tfeed]
+
+sol = odeint(adiabatic_pfr, Y0, Vspan)
+
+Fa = sol[:, 0]
+T = sol[:, 3]
+x = ((Fa - Fa0) * (-1) / Fa0)
+
+print('For a PFR that has a conversion of X={0:1.5f} : Volume = {1:1.2f} L'.format(x[-1],Vspan[-1]))
+print('For a PFR: The exit temperature is {0:1.2f} K'.format(T[-1]))
+
+#+END_SRC
+
+#+RESULTS:
+: For a PFR that has a conversion of X=0.85001 : Volume = 302.58 L
+: For a PFR: The exit temperature is 470.15 K
+
+*** CSTR
+#+BEGIN_SRC python
+import numpy as np
+from scipy.integrate import odeint
+
+Ha= -20 #kcal/mol 
+Hb= -15 #kcal/mol 
+Hc= -41 #kcal/mol 
+Hrx = (Hc-Hb-Ha)*1000     # Reaction enthalpy cal/mol at 273
+
+
+Tfeed = 27+273.15     # Feed temperature in K
+k1 = 0.01         # Rate constant at T1
+T1 = 300        # Reference T for the rate constant
+E = 10000       # Activation energy
+R = 1.9872036
+
+Ca0 =Cb0= 0.1       # initial concentration mol / L
+v0 = 2
+Fa0=Fb0 = Ca0 * v0
+Fc0= 0
+
+
+CpA = 15      # heat capacity cal/mol/K
+CpB = 15
+CpC = 30
+dCp = CpC - CpB - CpA   # change in heat capacity due to reaction
+
+X = 0.85          # fractional conversion
+Ca = Ca0 * (1.0 - X)
+Cb = Ca0 * (1.0-X)
+
+Fa = Fa0 * (1.0 - X)
+
+def objective(Y):
+    V, T = Y  # unpack the variables
+
+    # Calculate reaction energy at reaction conditions
+    Hrxn = Hrx + dCp * (T - Tfeed)
+
+    k = k1 * np.exp(-E / R * (1.0 / T - 1.0 / T1))
+
+    r = k * Ca *Cb
+    ra = -r
+    # mole balance
+    z1 = Fa0 - Fa + ra * V
+
+    # energy balance
+    z2 = (Fa0 * CpA + Fb0 * CpB + Fc0 * CpC) * (Tfeed - T) + (-Hrxn * r * V)
+    return [z1, z2]
+
+from scipy.optimize import fsolve
+
+Vcstr, Texit = fsolve(objective, [100, 400])
+print('For a CSTR: Volume = {0:1.2f} L'.format(Vcstr))
+print('For a CSTR: The exit temperature is {0:1.2f} K'.format(Texit))
+
+
+#+END_SRC
+
+#+RESULTS:
+: For a CSTR: Volume = 174.52 L
+: For a CSTR: The exit temperature is 470.15 K
+
+*** Combined 
+#+BEGIN_SRC python
+import numpy as np
+from scipy.integrate import odeint
+
+Ha= -20 #kcal/mol 
+Hb= -15 #kcal/mol 
+Hc= -41 #kcal/mol 
+Hrx = (Hc-Hb-Ha)*1000     # Reaction enthalpy cal/mol at 273
+
+
+Tfeed = 27+273.15     # Feed temperature in K
+k1 = 0.01         # Rate constant at T1
+T1 = 300        # Reference T for the rate constant
+E = 10000       # Activation energy
+R = 1.9872036
+
+Ca0 =Cb0= 0.1       # initial concentration mol / L
+v0 = 2
+Fa0=Fb0 = Ca0 * v0
+Fc0= 0
+
+
+CpA = 15      # heat capacity cal/mol/K
+CpB = 15
+CpC = 30
+dCp = CpC - CpB - CpA   # change in heat capacity due to reaction
+
+X = 0.85          # fractional conversion
+Ca = Ca0 * (1.0 - X)
+Cb = Ca0 * (1.0-X)
+
+Fa = Fa0 * (1.0 - X)
+
+def objective(Y):
+    V, T = Y  # unpack the variables
+
+    # Calculate reaction energy at reaction conditions
+    Hrxn = Hrx + dCp * (T - Tfeed)
+
+    k = k1 * np.exp(-E / R * (1.0 / T - 1.0 / T1))
+
+    r = k * Ca *Cb
+    ra = -r
+    # mole balance
+    z1 = Fa0 - Fa + ra * V
+
+    # energy balance
+    z2 = (Fa0 * CpA + Fb0 * CpB + Fc0 * CpC) * (Tfeed - T) + (-Hrxn * r * V)
+    return [z1, z2]
+
+from scipy.optimize import fsolve
+
+Vcstr, Texit = fsolve(objective, [100, 400])
+print('For a CSTR: Volume = {0:1.2f} L'.format(Vcstr))
+print('For a CSTR: The exit temperature is {0:1.2f} K'.format(Texit))
+
+
+def adiabatic_pfr(Y, V):
+    Fa,Fb, Fc, T = Y  # unpack variables
+    Ca1= Fa/v0
+    Cb1= Fb/v0
+
+    k = k1 * np.exp(-E / R * (1.0 / T - 1.0 / T1))
+    r = k * (Ca1 *Cb1)
+    ra = -r
+    rb= - r
+    rc= r
+
+    # thermodynamic reaction energy
+    Hrxn = Hrx + dCp * (T - Tfeed)
+
+    dFadV = ra
+    dFbdV = rb
+    dFcdV = rc
+    dTdV = (-Hrxn * r) / (Fa * CpA + Fb * CpB + Fc * CpC)
+
+    return [dFadV,dFbdV,dFcdV, dTdV]
+
+
+Vspan = np.linspace(0, 302.58) # volume in L
+Y0 = [Fa0,Fb0,Fc0, Tfeed]
+
+sol = odeint(adiabatic_pfr, Y0, Vspan)
+
+Fa = sol[:, 0]
+T = sol[:, 3]
+x = ((Fa - Fa0) * (-1) / Fa0)
+
+print('For a PFR that has a conversion of X={0:1.5f} : Volume = {1:1.2f} L'.format(x[-1],Vspan[-1]))
+print('For a PFR: The exit temperature is {0:1.2f} K'.format(T[-1]))
+
+#+END_SRC
+
+#+RESULTS:
+: For a CSTR: Volume = 174.52 L
+: For a CSTR: The exit temperature is 470.15 K
+: For a PFR that has a conversion of X=0.85001 : Volume = 302.58 L
+: For a PFR: The exit temperature is 470.15 K
+
+*** T
+#+BEGIN_SRC python
+import numpy as np
+from scipy.integrate import odeint
+
+Ha= -20 #kcal/mol 
+Hb= -15 #kcal/mol 
+Hc= -41 #kcal/mol 
+Hrx = (Hc-Hb-Ha)*1000     # Reaction enthalpy cal/mol at 273
+
+
+Tfeed = 379     # Feed temperature in K
+k1 = 0.01         # Rate constant at T1
+T1 = 300        # Reference T for the rate constant
+E = 10000       # Activation energy
+R = 1.9872036
+
+Ca0 =Cb0= 0.1       # initial concentration mol / L
+v0 = 2
+Fa0=Fb0 = Ca0 * v0
+Fc0= 0
+
+
+CpA = 15      # heat capacity cal/mol/K
+CpB = 15
+CpC = 30
+dCp = CpC - CpB - CpA   # change in heat capacity due to reaction
+
+X = 0.85          # fractional conversion
+Ca = Ca0 * (1.0 - X)
+Cb = Ca0 * (1.0-X)
+
+Fa = Fa0 * (1.0 - X)
+
+def objective(Y):
+    V, T = Y  # unpack the variables
+
+    # Calculate reaction energy at reaction conditions
+    Hrxn = Hrx + dCp * (T - Tfeed)
+
+    k = k1 * np.exp(-E / R * (1.0 / T - 1.0 / T1))
+
+    r = k * Ca *Cb
+    ra = -r
+    # mole balance
+    z1 = Fa0 - Fa + ra * V
+
+    # energy balance
+    z2 = (Fa0 * CpA + Fb0 * CpB + Fc0 * CpC) * (Tfeed - T) + (-Hrxn * r * V)
+    return [z1, z2]
+
+from scipy.optimize import fsolve
+
+Vcstr, Texit = fsolve(objective, [100, 600])
+print('For a CSTR: Volume = {0:1.2f} L'.format(Vcstr))
+print('For a CSTR: The exit temperature is {0:1.2f} K'.format(Texit))
+
+
+def adiabatic_pfr(Y, V):
+    Fa,Fb, Fc, T = Y  # unpack variables
+    Ca1= Fa/v0
+    Cb1= Fb/v0
+
+    k = k1 * np.exp(-E / R * (1.0 / T - 1.0 / T1))
+    r = k * (Ca1 *Cb1)
+    ra = -r
+    rb= - r
+    rc= r
+
+    # thermodynamic reaction energy
+    Hrxn = Hrx + dCp * (T - Tfeed)
+
+    dFadV = ra
+    dFbdV = rb
+    dFcdV = rc
+    dTdV = (-Hrxn * r) / (Fa * CpA + Fb * CpB + Fc * CpC)
+
+    return [dFadV,dFbdV,dFcdV, dTdV]
+
+
+Vspan = np.linspace(0,21.04) # volume in L
+Y0 = [Fa0,Fb0,Fc0, Tfeed]
+
+sol = odeint(adiabatic_pfr, Y0, Vspan)
+
+Fa = sol[:, 0]
+T = sol[:, 3]
+x = ((Fa - Fa0) * (-1) / Fa0)
+
+print('For a PFR that has a conversion of X={0:1.5f} : Volume = {1:1.2f} L'.format(x[-1],Vspan[-1]))
+print('For a PFR: The exit temperature is {0:1.2f} K'.format(T[-1]))
+
+#+END_SRC
+
+#+RESULTS:
+: For a CSTR: Volume = 37.52 L
+: For a CSTR: The exit temperature is 549.00 K
+: For a PFR that has a conversion of X=0.85038 : Volume = 21.04 L
+: For a PFR: The exit temperature is 549.08 K
+
+** 8Eb-mult-rxns
+Xylene exists in three isomers: ortho, meta and para-xylene. These isomers can be interconverted as follows:
+O -> M       k1
+M -> O       k2
+O -> P       k3
+Suppose an equimolar feed of O and M is fed at a total molar flow of 2 mol/min to a packed bed reactor. 
+a) Plot the temperature and molar flow of each species as a function of catalyst weight up to 100 kg.
+Additional information:
+all heat capacities are 100 J / mol / K
+dHrx1 = -1800 J / mol o-xylene
+dHrx2 = -1100 J / mol o-xylene
+k1 = 0.5 exp(2 * (1 - 320 / T))  L/kgcat/min
+Kc = 10 exp (4.8 * (430/T - 1.5))
+k2 = k1 / Kc
+k3 = 0.005 exp(4.6*(1 - 460 / T)) L/kgcat/min
+T0 = 330 K
+Ta = 500 K
+Ua/rhob = 16 J / kgcat / min / degC
+*** my try
+#+BEGIN_SRC python
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+Fo0= 1 #mol/min
+Fm0= 1 #mol/min 
+Fp0=0
+Ft0 = Fo0+Fm0
+Co0=Cm0=1
+v0= Fm0/Cm0 +Fo0/Co0
+Cp = 100 #J / mol / K
+dHrx1 = -1800 #J / mol o-xylene
+dHrx2 = -1100 #J / mol o-xylene
+
+T0 = 330 #K
+Ta = 500 #K
+Ua= 16 #J / kgcat / min / K
+
+def PBR(Y, W):
+    Fo, Fm,Fp, T = Y  # unpack variables
+
+    v = v0 * T / T0 
+
+    Cm = Fm / v
+    Co = Fo / v
+
+    k1 = 0.5*np.exp(2 * (1 - 320 / T))
+    Kc = 10* np.exp (4.8 * (430/T - 1.5))
+    k2 = k1 / Kc
+    k3 = 0.005* np.exp(4.6*(1 - 460 / T))
+    
+    r1 = k1 * Co
+    r2 = k2 * Cm
+    r3 = k3 * Co
+    
+    ro= -r1+r2-r3
+    rm= r1-r2
+    rp=r3
+
+    dFodW = ro
+    dFmdW = rm
+    dFpdW = rp
+    Qdot = Ua * (Ta - T)
+    dTdW = (-dHrx1*(r1-r2)-dHrx1*r3 + Qdot) / (Ft0*Cp)
+
+    return [dFodW,dFmdW,dFpdW,dTdW]
+
+
+Wspan = np.linspace(0,100,100)
+Y0 = [Fo0,Fm0,Fp0, T0]
+
+sol = odeint(PBR, Y0, Wspan)
+
+Fo = sol[:,0]
+Fm = sol[:,1]
+T  = sol[:,3]
+Fp  = sol[:,2]
+
+plt.plot(Wspan, Fo, label = 'Fo')
+plt.plot(Wspan, Fm, label = 'Fm')
+plt.plot(Wspan, Fp, label = 'Fp')
+plt.legend(loc = 'best')
+plt.savefig('lolo.png')
+
+
+#+END_SRC
+
+#+RESULTS:
+
+[[./lolo.png]]
+#+RESULTS:
+
+*** Another try
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import odeint
+
+Cp = 100 # J/mol/K
+Fo0 = Fm0 = 1.0 # mol/min
+Fp0 = 0
+Ft0 = 2 # mol/min, constant
+Hrx1 = - 1800 # J / mol o-xylene
+Hrx2 = - 1100 # J / mol o-xylene
+Ct0 = 10 # mol/L
+Co0 = Cm0 = 5 # mol/L
+v0 = Fo0/Co0 +Fm0/Cm0
+T0 = 330 # K
+Ta = 500 # K
+Ua = 16 # J / kgcat / min / K
+
+def pbr(Y, W):
+    Fo, Fm,Fp, T = Y # unpack parameters
+
+    k1 = 0.5 * np.exp(2 * (1 - 320 / T))  # L/kgcat/min
+    Kc = 10 * np.exp(4.8 * (430 / T - 1.5))
+    k2 = k1 / Kc
+    k3 = 0.005 * np.exp(4.6 * (1 - 460 / T)) # L/kgcat/min
+
+    v = v0*T/T0
+    Co = Fo / v
+    Cm = Fm / v
+
+    r1 = k1 * Co
+    r2 = k2 * Cm
+    r3 = k3 * Co
+
+    dTdW = (- Hrx1 * (r1 - r2) - Hrx2 * r3 + Ua * (Ta - T)) / (Ft0 * Cp)
+    dFodW = - r1 + r2 - r3
+    dFmdW = r1 - r2
+    dFpdW = r3
+
+    return [dFodW, dFmdW,dFpdW,dTdW]
+
+Wspan = np.linspace(0, 100, 500)
+x0 = [Fo0, Fm0,Fp0, T0]
+sol = odeint(pbr, x0, Wspan)
+
+T = sol[:, 3]
+Fo = sol[:, 0]
+Fm = sol[:, 1]
+Fp = sol[:, 2]
+import matplotlib.pyplot as plt
+
+plt.plot(Wspan, Fo, label = 'Fo')
+plt.plot(Wspan, Fm, label = 'Fm')
+plt.plot(Wspan, Fp, label = 'Fp')
+plt.legend(loc = 'best')
+plt.xlabel('Catalyst Weight(kg)')
+plt.ylabel('Molar Flow(mol/min)')
+plt.title('Molar Flow v.s. Catalyst Weight')
+plt.savefig('molar.png')
+
+plt.clf()
+plt.plot(Wspan, T, label = 'T')
+plt.xlabel('Catalyst Weight(kg)')
+plt.ylabel('Temperature(K)')
+plt.title('Temperature v.s. Catalyst Weight')
+plt.savefig('Tem.png')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+[[./molar.png]]
+[[./Tem.png]]
+** 9Eb-inerts
+The irreversible reaction $A \rightarrow B + C$ is carried out adiabatically in a 500 L PFR. Species A is fed to the reactor at a rate of 10 mol/min and a pressure of 2 atm. An inert stream is also fed to the reactor at a pressure of 2 atm. The temperature of both entrance streams is 1100K. 
+a. Plot the exit conversion as for a range of inert molar flows from 0 to 100 mol/min. Explain why there is a maximum in conversion. 
+ 
+Additional information 
+k = exp(34.3 - 34,222/T) 1/min                        CP,I=200 J/mol/K 
+CP,A=170 J/mol/K 
+CP,B=90 J/mol/K 
+CP,C=80 J/mol/K 
+Hrxn=80 kJ/mol 
+*** my way
+#+BEGIN_SRC python
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+V = 500 #L
+Tfeed =T0= 1100 #K
+Fa0 = 10 #mol/min
+Pa = 2 #atm
+R  = 0.082057
+Ca0=Pa/(R*Tfeed)
+va0=  Fa0/Ca0
+Fispan=np.linspace(0,100)
+
+CpA=170 #J/mol/K 
+CpB=90  #J/mol/K 
+CpC=80  #J/mol/K 
+Hrxn=80000 #J/mol 
+CpI=200 #J/mol/K
+
+def adiabatic_pfr(Y,V, Fi0):
+    Fa, T = Y
+    pa0 = Fa0 / Ft0 * p
+    Ca0 = pa0 / R / T0
+    Ci0 = pa0/R/T0
+    Ft0 = Fa0+Fi0
+    vi0=Fi0/Ci0
+    extent = (Fa - Fa0) / (-1.0)
+    Fb = extent
+    Fc = extent
+
+    Ft = Fa + Fb + Fc +Fi0
+    v0 = va0 + vi0
+
+    # include temperature in the volumetric flow
+    v = v0 * Ft / Ft0 * T / T0
+
+    # reaction rate
+    k = np.exp(34.3 - 34222.0 / T)
+    Ca = Fa / v
+    r = k * Ca
+    ra = -r
+
+    # thermodynamic reaction energy
+
+    dFadV = ra
+    dTdV = (-Hrxn * r) / (Fa * CpA + Fb * CpB + Fc * CpC+ Fi0*CpI)
+
+    return [dFadV, dTdV]
+
+
+Vspan = np.linspace(0, V) # volume in L
+Y0 = [Fa0, T0]
+X_exit = []
+for Fi0 in Fispan:
+    sol = odeint(adiabatic_pfr, Y0, Vspan, args=(Fi0,))
+    Fa,T = sol.T
+    X_exit += [(Fa0 - Fa[-1]) / Fa0]
+
+Fa = sol[:, 0]
+T = sol[:, 1]
+
+
+plt.plot(Fispan, X_exit)
+plt.savefig('mywaytoday.png')
+#+END_SRC
+
+#+RESULTS:
+
+[[./mywaytoday.png]]
+#+RESULTS:
+
+*** my way today correct
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+V = 500      # L
+Fa0 = 10     # mol/min
+p = 2        #atm
+T0 = 1100    # K
+R = 0.082057 # J/mol/K
+Cpi = 200    # J/mol/K 
+Cpa = 170    # J/mol/K 
+Cpb = 90     # J/mol/K 
+Cpc = 80     # J/mol/K 
+Hrxn = 80000 # J/mol
+Ci0 = p/R/T0
+Ca0 =  p/R/T0
+
+
+def adiabatic_pfr(Y, V, Fi):
+    Fa, T = Y  # unpack variables
+
+    extent = Fa0 - Fa
+    Fb = extent
+    Fc = extent
+
+    v0 = Fa0/ Ca0 + Fi/Ci0
+    Ft = Fi + Fa + Fb + Fc
+
+    Ft0 = Fi + Fa0
+    v = v0 * Ft / Ft0 * T / T0
+
+
+    Ca = Fa / v
+    k = np.exp(34.3 - 34222 / T) # 1/min 
+    r = k * Ca
+    ra = -r
+    dFadV = ra
+    dTdV = (- Hrxn * r) / (Fa*Cpa +Fb*Cpb + Fc*Cpc + Fi*Cpi)   
+    return [dFadV, dTdV]
+
+Fispan = np.linspace(0, 100,200) # inert gas molar flow range
+Vspan = [0, V] # Volume of PFR, less than 0.5
+Y0 = [Fa0, T0]
+
+Conversion = np.zeros(Fispan.shape)
+T_exit = np.zeros(Fispan.shape)
+
+for i,Fi0 in enumerate(Fispan):
+    sol = odeint(adiabatic_pfr, Y0, Vspan, args = (Fi0,))
+    Conversion[i] = 1 - sol[1,0] / Fa0
+    T_exit[i] = sol[1,1]
+    
+plt.plot(Fispan, Conversion)
+plt.xlabel('Fi')
+plt.ylabel('Conversion')
+plt.legend('X', loc = 'best')
+plt.savefig('hello.png')
+plt.figure()
+plt.plot(Fispan, T_exit)
+plt.xlabel('Fi')
+plt.ylabel('T (K)')
+plt.legend('X', loc = 'best')
+plt.savefig('helloitsme.png')
+plt.figure()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+Too little intert = lower T_exit
+To much = high T_exit 
+To little = High concentration 
+To much  = low concentration 
+To little = easy for reaction to bring the temperature down and the rate will be affected. 
+
+Having a high inert flow rate  will cause the concentration of A to go down, and the reaction will be slow. Having a low inert flow rate will cause the exit temperature to be lower and hence the rate of the reaction will be slow. There is a a value for the inert that maximizes conversion by causing the exit temperature to be higher and the bla bla.
+#+RESULTS:
+:RESULTS:
+:END:
+
+[[./hello.png]]
+[[./helloitsme.png]]
+#+RESULTS:
+:RESULTS:
+:END:
+*** raw wrong
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+V = 0.5 # m^3
+Fa0 = 10 # mol/min
+p = 2 * 101325 # Pa
+T0 = 1100 # K
+R = 8.314 # J/mol/K
+Cpi = 200 # J/mol/K 
+Cpa = 170 # J/mol/K 
+Cpb = 90 # J/mol/K 
+Cpc = 80 # J/mol/K 
+Cp = np.array([Cpi, Cpa, Cpb, Cpc])
+Hrxn = 80000 # J/mol
+
+def adiabatic_pfr(Y, V, Fi):
+    Fa, T = Y  # unpack variables
+    extent = Fa0 - Fa
+    Fb = extent
+    Fc = extent
+    F = np.array([Fi, Fa, Fb, Fc])
+    Ft = Fi + Fa + Fb + Fc
+    Ft0 = Fi + Fa0
+    v = v0 * Ft / Ft0 * T / T0
+    Ca = Fa / v
+    k = np.exp(34.3 - 34222 / T) # 1/min 
+    
+    r = k * Ca
+    ra = -r
+    dFadV = ra
+    dTdV = (- Hrxn * r) / np.dot(F, Cp)    
+    return [dFadV, dTdV]
+
+Fispan = np.linspace(0, 100, 100) # inert gas molar flow range
+Vspan = [0, V] # Volume of PFR, less than 0.5
+Y0 = [Fa0, T0]
+Conversion = np.zeros(Fispan.shape)
+T_exit = np.zeros(Fispan.shape)
+
+for i,Fi0 in enumerate(Fispan):
+    Ft0 = Fa0 + Fi0
+    pa0 = Fa0 / Ft0 * p
+    Ca0 = pa0 / R / T0
+    v0 = Fa0 / Ca0
+    sol = odeint(adiabatic_pfr, Y0, Vspan, args = (Fi0,))
+    Conversion[i] = 1 - sol[1,0] / Fa0
+    T_exit[i] = sol[1,1]
+    
+plt.plot(Fispan, Conversion)
+plt.xlabel('Fi')
+plt.ylabel('Conversion Rate')
+plt.legend('Conversion', loc = 'best')
+plt.show()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+*** very correct
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import odeint
+
+Fa0 = 10.0  # mol / min
+Pa0 = 2.0   # atm
+
+T0 = 1100.0  # K
+R = 0.082    # L atm / (mol K)
+
+Ca0 = Pa0 / R / T0  # mol / L
+va0 = Fa0 / Ca0     # L / min
+
+Pi0 = 2.0   # atm
+Ci0 = Pa0 / R / T0
+
+Hrxn = 80000.0  # J/mol
+Cpa = 170.0     # J/mol/K
+Cpb = 90.0
+Cpc = 80.0
+
+dCp = Cpb + Cpc - Cpa
+
+Cpi = 200.0
+
+V = 500.0    # L
+
+
+def pfr(Y, V, Fi0):
+    Fa, T = Y
+
+    vi0 = Fi0 / Ci0
+    v0 = va0 + vi0    # combined volumetric flows
+    Ft0 = Fa0 + Fi0
+
+    # Extent + stoichiometry
+    xi = (Fa - Fa0) / -1.0
+    Fb = Fc = xi
+    Ft = Fa + Fb + Fc + Fi0
+
+    v = v0 * Ft / Ft0 * T / T0
+
+    Ca = Fa / v
+
+    k = np.exp(34.3 - 34222.0/T)
+    r = k * Ca
+    ra = -r
+    dFadV = ra
+
+    dTdV = (-Hrxn * r) / (Fa * Cpa + Fb * Cpb + Fc * Cpc + Fi0 * Cpi)
+    return [dFadV, dTdV]
+
+Vspan = np.linspace(0, V)
+Y0 = [Fa0, T0]
+
+fio_span = np.linspace(0, 100, 100)
+
+exit_conversion = np.empty(fio_span.shape)
+
+for i, fio in enumerate(fio_span):
+
+    sol = odeint(pfr, Y0, Vspan, args=(fio,))
+    exit_conversion[i] = (Fa0 - sol[-1, 0]) / Fa0
+
+import matplotlib.pyplot as plt
+plt.plot(fio_span, exit_conversion)
+plt.xlabel('Molar flow of inerts (mol/min)')
+plt.ylabel('Exit conversion')
+plt.savefig('soln121.png')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+[[./soln121.png]]
+** 10Eb-cstr-exit T
+'''
+A 125 gallon CSTR with a constant temperature steam jacket with an area of 10 ft^2 is used for the reaction  A + B $\rightarrow$ 2C. 
+Using the following data, estimate the exit temperature.
+Jacket steam temperature: 365.9 degrees F
+Overall heat-transfer coefficient U = 150 Btu/h/ft^2/degF
+Stirring horse power: 25 hp (this is shaft work)
+\Delta H_{rx} = 20,000 BTU/lb-mol A (and it is temperature independent)
+                               
+                                Component  
+                              -----------------------  
+                                 A        B       C   
+-----------------------------------------------------
+Feed (lbmol/hr)                 10.0     10.0    0.0
+Feed temperature (degF)         80       80      -
+specific heat (Btu/lbmol/degF)  51.0     44      47.5
+Molecular weight                128      94      111
+Density (lb/ft^3)               63.0     67.2    65.0
+
+'''
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+
+S = 10 # ft^2
+V = 125 * 0.13368 #gallon to ft^3
+Hrx = 20000.0 # Btu/lbmol A
+Wstir = 25 * 2544.43 # covert hp to Btu/hr
+
+# Heat exchange
+Ta = 365.9 # degF
+U = 150 # Btu/h/ft^2/degF
+
+# Molar Flow in lbmol/hr
+Fa0 = Fb0 = 10.0
+Fc0 = 0
+F0 = np.array([Fa0, Fb0, Fc0])
+Fa = Fb = 0
+Fc = 5.0
+F = np.array([Fa, Fb, Fc])
+
+T0 = 80 # degF
+
+Cpa = 51.0 # Btu/lbmol/degF, same units for Cpb and Cpc
+Cpb = 44.0
+Cpc = 47.5
+Cp = np.array([Cpa, Cpb, Cpc])
+
+# Molecular weight in lb/lbmol
+Ma = 128
+Mb = 94
+Mc = 111
+M = np.array([Ma, Mb, Mc])
+
+# $\rho$ in lb/ft$^3$
+rhoa = 63.0
+rhob = 67.2
+rhoc = 65.0
+rho = np.array([rhoa, rhob, rhoc])
+
+def exitT(T):
+    FCP = np.dot(F0, Cp) * (T0 - T)
+    reaction_heat = - Hrx * (Fa0 - Fa)
+    Q = U * S * (Ta - T)
+    W = Wstir
+    return FCP + Q + W + reaction_heat
+
+from scipy.optimize import fsolve
+
+sol, = fsolve(exitT, 100)
+print('The exit temperature is {0:1.2f} degF'.format(sol))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+The exit temperature is 199.37 degF
+:END:
+
+** 11Exam2-2
+*** Monte Carlo
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.optimize import fsolve
+import matplotlib.pyplot as plt
+from scipy.special import lambertw as W
+
+#Define variables
+N = 10000  # number of MC samples
+Vm = np.random.normal(30, 2, N)
+Km = np.random.normal(15, 3, N)
+V =1 
+Cs0= 1
+Cs =0.2
+
+
+#Define function
+def func(t, vmax, km):
+    return km* W(Cs0/km*np.exp(Cs0/km - vmax/km *t)).real -Cs
+
+T = sorted([fsolve(func, 1, args=(vmax, km))[0]
+     for (vmax, km) in zip(Vm, Km)])
+
+
+#Present results
+print('We should run for a time of at least {}'.format(T[int(0.95 * N)]))
+import matplotlib.pyplot as plt
+plt.hist(T, bins=20)
+plt.xlabel('Reaction time')
+plt.ylabel('frequency')
+plt.savefig('soln.png')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+We should run for a time of at least 1.1207189257589236
+:END:
+
+#+TURNED-IN: Wed Nov  2 17:12:00 2016
+[[./soln.png]]
+
+*** Uncertainty Pkg
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.optimize import fsolve
+import matplotlib.pyplot as plt
+from scipy.special import lambertw as W
+import uncertainties as u
+
+
+
+#Define variables
+Vm = u.ufloat(30,2)
+Km = u.ufloat(15,3)
+V =1 
+Cs0= 1
+Cs =0.2
+
+
+#Define function
+def func(t, vmax, km):
+    return km* W(Cs0/km*np.exp(Cs0/km - vmax/km *t)).real -Cs
+
+def solve(vmax,km):
+    return fsolve(func, 1, args=(vmax,km))[0]
+
+t= u.wrap(solve)(Vm,Km)
+
+print(t)
+#Mean
+print(t.nominal_value)
+#Standard deviation
+print(t.s)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+0.83+/-0.17
+0.8313856228837169
+0.17022018999760233
+:END:
+
+** 12Cyclohexane hwrk
+** 13 Go over hw [-2]
+** 14 Go over hw [-3]
+** Exam-3-mrxns
+Xylene exists in three isomers: ortho, meta and para-xylene. These isomers can be interconverted as follows:
+
+O -> M k1
+M -> O k2
+O -> P k3
+
+Suppose an equimolar feed of O and M is fed at a total molar flow of 2 mol/min to a packed bed reactor with a total concentration of 2 mol/L. The packed bed reactor has 60 kg of catalyst in an ambient temperature heat exchanger with Ta = 500K, and a heat transfer constant of 16 J / min / degC / kgcat.
+
+Additional information: all heat capacities are 100 J / mol / K
+
+dHrx1 = -1800 J / mol o-xylene dHrx2 = -1100 J / mol o-xylene k1 = 0.5 exp(2 * (1 - 320 / T)) L/kgcat/min Kc = 10 exp (4.8 * (430/T - 1.5)) k2 = k1 / Kc k3 = 0.005 exp(4.6*(1 - 460 / T)) L/kgcat/min
+
+T0 = 330 K Ta = 500 K Ua = 16 J / kgcat / min / degC
+
+Determine the maximum concentration of ortho-xylene in the reactor, and explain why there is a maximum.
+
+** Exam3-mt
+NO is produced in an industrial process. It is against the law to emit NO into the atmosphere, so your company uses a packed bed of porous carbon beads to reduce the NO to 1/2 N2 and CO. The reaction is first order in NO: -rNO = k1 CNO and it primarily occurs in the pores of the carbon pellets.
+
+The feed gas is 2% NO, 98% air flowing at 1e-6 m^3/s through a 2 inch tube at 1173K and 101.3 kPa.
+
+The reaction occurs at a rate of k1 = 0.22 1 / s and is first order in NO.
+
+The effective diffusivity of gas in the carbon pellets is 1.82e-8 m^2/s
+
+The carbon pellets are 3e-3 m in radius. The catalyst density is 2.8e6 g/m^3
+
+There is no pressure drop, and the carbon pellets do not change size significantly.
+
+Calculate the weight of porous carbon required to reduce the concentration of NO from 2mol% in air to 0.004mol%, which is the legal limit.
+
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+P= 101.3*1000 #pa
+v0= 1e-6 #m^3/s
+T = 1173 #K
+R=8.314  #Pa/m^3 /K/mol
+C0= P/R/T
+Cno0=0.02 *C0
+Co0=0.98*0.21*C0
+Cn0=0.98*0.79*C0
+Ft0= v0*C0
+k = 0.22 #/s
+
+De = 1.82e-8 #m2/s
+r= 3e-3 #m
+rhocat=2.8e6 #g/m^3
+Cnof=0.00004*C0
+X=(Cno0-Cnof)/Cno0
+print('Goal conversion is {0}'.format(X))
+print('Goal conversion is {0}'.format((2-0.004)/2))
+
+a=r/3 #m
+phi=((k*a**2)/De)**0.5
+eta=1.0/phi *(1.0/np.tanh(3*phi) - 1.0/(3*phi))
+print('effectivness factor is eta = {0:1.5f}'.format(eta))
+
+def pfr(F,W):
+    Fno, Fn, Fco= F
+    Ft= Fno+Fn+Fco+Co0*v0
+    v =v0*Ft/Ft0
+    Cn = Fno/v
+    rideal = -k*Cn/rhocat    #
+    r = rideal*eta
+    dFnodW = -r
+    dFndW = 0.5*r
+    dFCodW = r
+    return [dFndW, dFndW, dFCodW]
+
+Wspan = np.linspace(0, 596)
+x0 = [Cno0*v0,Cn0*v0,0]
+sol = odeint(pfr, x0, Wspan)
+Fno,Fn, Fco= sol.T
+X=(Cno0*v0-Fno)/(Cno0*v0)
+Ft= Fno+Fn+Fco+Co0*v0
+v =v0*Ft/Ft0
+percent= Fno/Ft
+print('The mol percent of NO at the exit is {0}% mol and the conversion is {1}'.format(percent[-1]*100,X[-1]))
+print('The weight of catalyst required would be the Volume of reactor multplied by the desnity of the catalyst + the weight of carbon leaving as carbon monoxide. If we can assume that the weight of the carbon monoxide leaving is negligible, the weight of the catalyst required is {0} grams '.format(Wspan[-1]))
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+Goal conversion is 0.998
+Goal conversion is 0.998
+effectivness factor is eta = 0.26005
+The mol percent of NO at the exit is 0.003973227558418406% mol and the conversion is 0.9981720248046706
+The weight of catalyst required would be the Volume of reactor multplied by the desnity of the catalyst + the weight of carbon leaving as carbon monoxide. If we can assume that the weight of the carbon monoxide leaving is negligible, the weight of the catalyst required is 596.0 grams 
+:END:
+
+** Exam3-multiple c ex3 ex2 ex1 *** come back 
+** Exam3- eb-cstr
+The production of propylene glycol occurs in a CSTR with a heat exchanger.
+
+The reaction is A + B → C
+A = propylene oxide B = water C = propylene glycol
+
+Initially the CSTR starts out with water in it at 75 degF in a 67 ft^3 reactor. The feed stream contains 80 lbmol/h of propylene oxide (A), 1000 lbmol of water (B) and 100 lbmol of methanol (M) which is inert.
+
+The molar densities of each component are: ρ_A 0.923 lbmol / ft^3 ρ_B 3.45 lbmol/ft^3 ρ_M 1.54 lbmol / ft^3 You can assume these are independent of composition and temperature
+
+Heat exchanger data: UA = 16000 BTU/h/degF coolant flowrate (mc) = 1000 lbmol / hour coolant heat capacity = 18 BTU/lbmol/degF coolant temperature (Ta) = 60 degF The rate of heat transfer is given by:
+
+Qdot = mc * Cpb * (Ta - T) * (1 - np.exp(-UA / (mc * Cpb)))
+Heat capacity data Cpa = 35 BTU/lbmol/degF Cpb = 18 BTU/lbmol/degF Cpc = 46 BTU / lbmol/degF Cpm = 19.5 BTU / lbmol/degF
+
+The heat of reaction is -36000 BTU/lbmol A, and is assumed to be constant.
+
+The rate constant for the reaction is:
+
+k = 16.96e12 * np.exp(-32400.0 / 1.987 / (T + 460.0))
+The reaction is pseudo-first order in A, so -rA = k(T) C_A.
+
+The reactants decompose if they get above 170 degF.
+
+Estimate the maximum feed temperature you can use to avoid decomposition. Show a plot of the temperature vs. time.
+Explain qualitatively why the temperature profile looks the way it does.
+Estimate the exit concentration of propylene glycol for the feed temperature you found in part 1.
+** Thiele
+A catalyst has been identified for the isomerization of 1-hexene to 2-hexene that has a rate constant of 0.14 1/s. If the catalyst is supported in a porous bead where the effective diffusivity of 1-hexene is 0.0062 cm^2/s, estimate the maximum size catalyst particle that has at least a 70% effectiveness factor.
+
+#+BEGIN_SRC python :results output org drawer
+
+De = 0.0062 # cm^2/s
+k= 0.14
+n=0.7
+import numpy as np
+
+def eta(R):
+    return 1.0 / ((k * (R / 3) ** 2 / De) ** 0.5) * (1.0 / np.tanh(3 * ((k * (R / 3) ** 2 / De) ** 0.5)) - 1.0 / (3 * ((k * (R / 3) ** 2 / De) ** 0.5)))- n
+
+from scipy.optimize import fsolve
+
+R, = fsolve(eta, 0.0001)
+
+etaa =1.0 / ((k * (R / 3) ** 2 / De) ** 0.5) * (1.0 / np.tanh(3 * ((k * (R / 3) ** 2 / De) ** 0.5)) - 1.0 / (3 * ((k * (R / 3) ** 2 / De) ** 0.5)))
+
+print(etaa)
+print ('To get an effectiveness factor of .7, the radius is  {} cm'.format(R))
+print ('Assuming the particles are spheres, the the size is  {} cm^3'.format(4/3*np.pi*R**3))
+
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+0.7
+To get an effectiveness factor of .7, the radius is  0.5838784131194782 cm
+Assuming the particles are spheres, the the size is  0.8337884337795455 cm^3
+:END:
+
+** eb-batch coolant
+For the example in Batch with heat exchanger, find the coolant temperature that will prevent the maximum temperature from exceeding 373K. Do this as quantitatively as you can.
+#+BEGIN_SRC python :results output org drawer
+import numpy as np
+from scipy.integrate import odeint
+
+V = 1200.0 # L
+T0 = 273.15 + 27
+CA0 = CB0 = 2.0
+CC0 = 0.0
+
+cpa = cpb = 20.0  # cal/mol/K
+cpc = 40.0        # cal/mol/K
+
+k0 = 0.01725    # L / mol / min at 27 degC
+E = 1500.0     # cal/mol
+R = 1.987       # cal/mol/K
+dH = -10000.0  # cal/mol
+
+Ua = 5000.0  # overall heat transfer coefficient
+Tcoolant = 29.06 + 273.15  # coolant temperature
+
+def batch(Y, t, Tcoolant):
+    na, T = Y
+    xi = (na - CA0*V) / -1.0
+    nb = CB0 * V - xi
+    nc = CC0 * V + xi
+
+    Ca = na / V
+    Cb = nb / V
+    k = k0 * np.exp(-E / R * (1.0 / T - 1.0 / T0))
+    r = k * Ca * Cb
+    ra = -r
+
+    Qdot = Ua*(Tcoolant - T)
+
+    dnadt = ra * V
+    dTdt = (-dH * r * V + Qdot)/(na * cpa + nb * cpb + nc * cpc)
+    return [dnadt, dTdt]
+
+
+Y0 = [V * CA0, T0]
+
+tspan = np.linspace(0, 200, 500)
+
+def obj(Tcool):
+    sol = odeint(batch,Y0,tspan, args = (Tcool,))
+    return max(sol[:,1]-373)
+from scipy.optimize import fsolve
+sol, =fsolve(obj,300)
+print ('When the coolant temperature is {0}K, the maximum temperature reaches 373K'.format(sol))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+When the coolant temperature is 301.9990139080638K, the maximum temperature reaches 373K
+:END:
+
+** inert example go back
+* Energy Balance
+** Forms of k
+\( k(T) = A e^{-E/(RT)} \)
+\( k(T) = k(T_0) \exp \left (\frac{-E}{R}\left (\frac{1}{T} - \frac{1}{T_0}\right)\right) \)
+
+**  K
+\(K(T) = K_1(T) \exp\left [ \frac{-\Delta H (T_1)}{R}\left (\frac{1}{T} - \frac{1}{T_1}\right ) \right ] \)
+**  v 
+ \( \nu = \nu_0 \frac{F_T}{F_{T0}} \frac{P_0}{P} \frac{T}{T_0} \frac{Z}{Z_0} \)
+** y pBR
+** Hrx
+- Let us define $\Delta C_p = \sum_j \alpha_j C_{p,j}$. then
+
+\( \Delta H_{rxn}(T) = \Delta H_{rxn}(T_R) + \Delta C_p(T - T_R) \)
+
+Hrx_TR = Hc - Hb - Ha
+deltaCp = Cpc - Cpa - Cpb
+
+** Batch
+*** Adiabatic
+- We consider the reaction $A + B \rightarrow C$
+#+BEGIN_SRC python
+import numpy as np
+from scipy.integrate import odeint
+
+V = 1200.0 # L
+T0 = 273.15 + 27
+CA0 = CB0 = 2.0
+CC0 = 0.0
+
+# heat capacities
+cpa = cpb = 20.0  # cal/mol/K
+cpc = 40.0        # cal/mol/K
+
+# rate constants
+k0 = 0.01725      # L / mol / min at 27 degC
+E = 1500.0        # cal/mol
+R = 1.987         # cal/mol/K
+dH = -10000.0     # cal/mol
+
+def adiabatic_batch(Y, t):
+    na, T = Y
+
+    # extent based on moles
+    xi = (na - CA0 * V) / -1.0
+    nb = CB0 * V - xi
+    nc = CC0 * V + xi
+
+    # concentrations
+    Ca = na / V
+    Cb = nb / V
+
+    # temperature dependent rate constant
+    k = k0 * np.exp(-E / R * (1.0 / T - 1.0 / T0))
+    r = k * Ca * Cb
+
+    dnadt = -r * V
+
+    # energy balance
+    dTdt = -(dH * r * V)/(na * cpa + nb * cpb + nc * cpc)
+    return [dnadt, dTdt]
+
+# initial conditions
+Y0 = [V * CA0, T0]
+
+tspan = np.linspace(0, 200)
+sol = odeint(adiabatic_batch, Y0, tspan)
+
+import matplotlib.pyplot as plt
+plt.plot(tspan, sol[:,1])
+plt.xlabel('Time (min)')
+plt.ylabel('Temperature (K)')
+plt.savefig('images/adiabatic-batch-temp-profile.png')
+#+END_SRC
+
+*** Ambient HE
+#+BEGIN_SRC python
+import numpy as np
+from scipy.integrate import odeint
+
+V = 1200.0 # L
+T0 = 273.15 + 27
+CA0 = CB0 = 2.0
+CC0 = 0.0
+
+cpa = cpb = 20.0  # cal/mol/K
+cpc = 40.0        # cal/mol/K
+
+k0 = 0.01725    # L / mol / min at 27 degC
+E = 1500.0     # cal/mol
+R = 1.987       # cal/mol/K
+dH = -10000.0  # cal/mol
+
+Ua = 5000.0  # overall heat transfer coefficient
+Tcoolant = 77 + 273.15  # coolant temperature
+
+def batch(Y, t):
+    na, T = Y
+    xi = (na - CA0*V) / -1.0
+    nb = CB0 * V - xi
+    nc = CC0 * V + xi
+
+    Ca = na / V
+    Cb = nb / V
+    k = k0 * np.exp(-E / R * (1.0 / T - 1.0 / T0))
+    r = k * Ca * Cb
+    ra = -r
+
+    Qdot = Ua*(Tcoolant - T)
+    #heat transfer only, no reaction  r=0 
+    dnadt =ra * V 
+    dTdt = (-dH * r * V + Qdot)/(na * cpa + nb * cpb + nc * cpc)
+    return [dnadt, dTdt]
+
+
+Y0 = [V * CA0, T0]
+
+tspan = np.linspace(0, 200)
+sol = odeint(batch, Y0, tspan)
+import matplotlib.pyplot as plt
+plt.plot(tspan, sol[:,1])
+plt.xlabel('Time (min)')
+plt.ylabel('Temperature (K)')
+plt.savefig('images/heat-exchanger-batch-temp-profile.png')
+#+END_SRC
+
+** CSTR 
+*** adiabatic
+#+BEGIN_SRC python
+import numpy as np
+
+R = 8.314e-3      # gas constant kJ/mol/K
+
+Hrx = -6.900      # Reaction enthalpy kJ/mol at 330 K
+
+Tfeed = 330.0     # Feed temperature in K
+k1 = 31.1         # Rate constant at 360 K
+T1 = 360.0        # Reference T for the rate constant
+E = 65.7          # Activation energy
+Kc1 = 3.03        # at 60degC
+T2 = 273.15 + 60  # Reference T for the equilibrium constant
+
+Cao = 9300.0      # initial concentration mol / m**3
+Fto = 163000.0    # Total molar feed rate mol / hour
+Fao = 0.9 * Fto   # inlet molar flow of A
+Fbo = 0.0 * Fto
+Fio = 0.1 * Fto
+
+CpA = 0.141       # heat capacity kJ / mol / K
+CpB = 0.141
+dCp = CpB - CpA   # change in heat capacity due to reaction
+
+CpI = 0.161
+
+X = 0.7           # fractional conversion
+Ca = Cao * (1.0 - X)
+Cb = Cao * X
+
+Fa = Fao * (1.0 - X)
+
+def objective(Y):
+    V, T = Y  # unpack the variables
+
+    # Calculate reaction energy at reaction conditions
+    Hrxn = Hrx + dCp * (T - Tfeed)
+
+    k = k1 * np.exp(-E / R * (1.0 / T - 1.0 / T1))
+    Kc = Kc1 * np.exp(-Hrxn / R * ( 1.0 / T - 1.0 / T2))
+
+    r = k * (Ca - Cb / Kc)
+    ra = -r
+    # mole balance
+    z1 = Fao - Fa + ra * V
+
+    # energy balance
+    z2 = (Fao * CpA + Fbo * CpB + Fio * CpI) * (Tfeed - T) + (-Hrxn * r * V)
+    return [z1, z2]
+
+from scipy.optimize import fsolve
+
+V, Texit = fsolve(objective, [16.42, 360])
+print('Volume = {0:1.2f} m^3'.format(V))
+print('The exit temperature is {0:1.2f} K'.format(Texit))
+#+END_SRC
+*** Check if conversion is possible
+#+BEGIN_SRC python
+import numpy as np
+import matplotlib.pyplot as plt
+
+Hrx = -6.9   # kJ / mol
+R = 8.314e-3
+K_ref = 3.03
+T_ref = 273.15 + 60
+
+T = np.linspace(300, 600)
+
+K = K_ref * np.exp(-Hrx / R * (1.0 / T - 1.0 / T_ref))
+
+Xeq = K / (1.0 + K)
+
+plt.plot(T, Xeq)
+plt.xlabel('Temperature (K)')
+plt.ylabel('$X_{eq}$')
+plt.savefig('images/A-B-exo-equil-T.png')
+#+END_SRC
+*** Reversible
+$A \leftrightharpoons B$
+#+BEGIN_SRC python
+import numpy as np
+import matplotlib.pyplot as plt
+
+Hrx = -20000.0     # cal / mol
+R = 1.987
+K_298 = 100000.0
+
+T_ = np.linspace(300, 600)
+
+K_ = K_298 * np.exp(-Hrx / R * (1.0 / T_ - 1.0 / 298.0))
+Xeq = K_ / (1.0 + K_)
+
+plt.plot(T_, Xeq, label='$X_{eq}$')
+
+# mole and energy balances
+k1 = 3.1e-6      # Rate constant at 360 K  1 / min
+T1 = 360.0       # Reference T for the rate constant
+E = 15000.0      # Activation energy
+
+V = 600.0        # reactor volume in L
+
+Cao = 2.0        # initial concentration mol / L
+Fao = 10.0       # mol / min
+Fbo = 0.0
+
+v0 = Fao / Cao
+
+CpA = 50.0       # heat capacity cal / mol / K
+CpB = 50.0
+dCp = CpB - CpA  # change in heat capacity due to reaction
+
+def objective(Y, Tfeed):
+    X, T = Y  # unpack the variables
+    Ca = Cao * (1.0 - X)
+    Cb = Cao * X
+
+    k = k1 * np.exp(-E / R * (1.0 / T - 1.0 / T1))
+    K = K_298 * np.exp(-Hrx / R * (1.0 / T - 1.0 / 298.0))
+
+    r = k * (Ca - Cb / K)
+    ra = -r
+
+    # mole balance
+    Fa = Ca * v0
+    z1 = (Fao - Fa) + ra * V
+
+    # energy balance
+    # Calculate reaction energy at reaction conditions
+    Hrxn = Hrx + dCp * (T - Tfeed)
+    z2 = (Fao * CpA + Fbo * CpB) * (Tfeed - T) / (-Hrxn * r * V)  + 1
+    return [z1, z2]
+
+from scipy.optimize import fsolve
+
+Tfeed = np.linspace(350, 600)
+Xe, Te = np.empty(Tfeed.shape), np.empty(Tfeed.shape)
+
+guess = [0.1, 200]
+for i, tfeed in enumerate(Tfeed):
+    sol, infodict, ier, message = fsolve(objective, guess, args=(tfeed), xtol=1e-6, full_output=1)
+    if ier == 1:
+        Xe[i], Te[i] = sol
+        guess = [Xe[i], Te[i]]
+    else:
+        print(message)
+import matplotlib.pyplot as plt
+plt.plot(Tfeed, Xe)
+
+plt.xlabel('Feed temperature')
+plt.ylabel('Conversion')
+plt.legend(['$X_{eq}$','$X_{exit}$'])
+
+plt.savefig('lol.png')
+#+END_SRC
+
+#+RESULTS:
+
+[[./lol.png]]
+*** Two Cstrs in series (cooled to 300 in between)
+#+BEGIN_SRC python
+import numpy as np
+
+V = 10.0          # m**3
+R = 8.314e-3      # gas constant kJ/mol/K
+
+Hrx = -6.900      # Reaction enthalpy kJ/mol at 330 K
+
+k1 = 31.1         # Rate constant at 360 K
+T1 = 360.0        # Reference T for the rate constant
+E = 65.7          # Activation energy kJ/mol
+Kc1 = 3.03        # at 60degC
+T2 = 273.15 + 60  # Reference T for the equilibrium constant
+
+Cao = 9300.0      # initial concentration mol / m**3
+Fto = 163000.0    # Total molar feed rate mol / hour
+Fao = 0.9 * Fto   # inlet molar flow of A
+Fbo = 0.0 * Fto
+Fio = 0.1 * Fto
+
+v0 = Fao / Cao
+
+CpA = 0.141       # heat capacity kJ / mol / K
+CpB = 0.141
+dCp = CpB - CpA   # change in heat capacity due to reaction
+
+CpI = 0.161
+
+Tfeed = 300.0 # feed T in K
+
+def objective(Y, Fao):
+    X, T = Y  # unpack the variables
+
+    v = v0 * T / Tfeed
+
+    Cao = Fao / v
+
+    Ca = Cao * (1.0 - X)
+    Cb = Cao * X
+
+    Fa = Ca * v0
+
+    # Calculate reaction energy at reaction conditions
+    Hrxn = Hrx + dCp * (T - Tfeed)
+
+    k = k1 * np.exp(-E / R * (1.0 / T - 1.0 / T1))
+    Kc = Kc1 * np.exp(-Hrxn / R * (1.0 / T - 1.0 / T2))
+
+    r = k * (Ca - Cb / Kc)
+    ra = -r
+    # mole balance
+    z1 = Fao - Fa + ra * V
+
+    # energy balance
+    z2 = (Fao * CpA
+          + Fbo * CpB
+          + Fio * CpI) * (Tfeed - T) + (-Hrxn * r * V)
+    return [z1, z2]
+
+from scipy.optimize import fsolve
+
+guess = [0.1, 360]
+
+X1, T1 = fsolve(objective, guess, args=(Fao,))
+
+print('After reactor 1: X1 = {0:1.2f} and T1 = {1:1.0f}'.format(X1, T1))
+
+# Now we compute Fa1
+Fa1 = Fao * (1.0 - X1)
+
+X2, T2 = fsolve(objective, guess, args=(Fa1,))
+print('After reactor 1: X2 = {0:1.2f} and T2 = {1:1.0f}'.format(X2, T2))
+#+END_SRC
+*** Multiple rxns 
+A->B->C
+#+BEGIN_SRC python
+import numpy as np
+from scipy.optimize import fsolve
+
+V = 10.0 # Liter
+
+v0 = 1000.0 # L / min
+Cafeed = 0.3 # mol / L
+
+# inlet molar flows
+Fa0 = v0 * Cafeed
+Fb0 = Fc0 = 0.0
+
+# Reaction properties
+Hrx1 = -55000.0  # J / mol-A
+Hrx2 = -71500.0  # J / mol-B
+
+k1_300 = 3.3     # 1 / min at 300K
+E1 = 9900.0      # cal / mol
+
+k2_500 = 4.58    # 1 / min at 500K
+E2 = 27000.0     # cal / mol
+R = 1.987        # cal / mol / K
+
+# thermal properties
+Cpa = Cpb = Cpc = 200.0 # J / mol /K
+Tfeed = 283.0 # K
+
+# heat exchanger
+Ta = 330.0   # K heat exchanger
+Ua = 40000.0 # J / min / K
+
+def objective(Y):
+    Fa, Fb, Fc, T = Y
+    k1 = k1_300 * np.exp(-E1 / R * (1.0 / T - 1.0 / 300.0))
+    k2 = k2_500 * np.exp(-E2 / R * (1.0 / T - 1.0 / 500.0))
+
+    Ca = Fa / v0
+    Cb = Fb / v0
+
+    r1 = k1 * Ca
+    r2 = k2 * Cb
+
+    # net rates
+    ra = -r1
+    rb = r1 - r2
+    rc = r2
+
+    # mole balances
+    z1 = Fa0 - Fa + ra * V
+    z2 = Fb0 - Fb + rb * V
+    z3 = Fc0 - Fc + rc * V
+
+    # energy balance
+    z4 = Ua * (Ta - T) + Fa0 * Cpa * (Tfeed - T) + V * (r1 * -Hrx1 + r2 * -Hrx2)
+    return [z1, z2, z3, z4]
+
+solutions = []
+for Ca in [0.01, 0.1, 0.2, 0.3, 0.4]:
+    for Cb in [0.01, 0.1, 0.2, 0.3, 0.4]:
+        for Cc in [0.01, 0.1, 0.2, 0.3, 0.4]:
+            for Tg in [300, 400, 500, 600, 700]:
+                Yy0 = [v0*Ca, v0*Cb, v0*Cc, Tg]
+                sol = fsolve(objective, Yy0)
+                Texit = sol[-1]
+                solutions += [Texit]
+
+import matplotlib.pyplot as plt
+plt.hist(solutions, 200)
+plt.xlabel('$T_{exit}$')
+plt.ylabel('frequency')
+plt.savefig('images/cstr-mult-reactions-mult-steady-states.png')
+#+END_SRC
+
+** PFR
+*** Adiabatic
+$A \rightarrow B + C$ 
+#+BEGIN_SRC python
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+Fa0 = 0.0376      # mol/s
+Ca0 = 0.0188      # mol / L
+
+v0 = Fa0 / Ca0    # initial volumetric flow
+Ft0 = Fa0
+
+T0 = 1035.0       # K
+
+# thermal properties
+Hrxn_298 = 80.77   # kJ/mol at 298K
+Cpa = 0.1630       # kJ/mol/K
+Cpb = 0.083
+Cpc = 0.071
+
+def adiabatic_pfr(Y, V):
+    Fa, T = Y  # unpack variables
+
+    extent = (Fa - Fa0) / (-1.0)
+    Fb = extent
+    Fc = extent
+
+    Ft = Fa + Fb + Fc
+
+    # include temperature in the volumetric flow
+    v = v0 * Ft / Ft0 * T / T0
+
+    # reaction rate
+    k = np.exp(34.3 - 34222.0 / T)
+    Ca = Fa / v
+    r = k * Ca
+    ra = -r
+
+    # thermodynamic reaction energy
+    Hrxn = Hrxn_298 + (Cpb + Cpc - Cpa) * (T - 298.0)
+
+    dFadV = ra
+    dTdV = (-Hrxn * r) / (Fa * Cpa + Fb * Cpb + Fc * Cpc)
+
+    return [dFadV, dTdV]
+
+
+Vspan = np.linspace(0, 15) # volume in L
+Y0 = [Fa0, T0]
+
+sol = odeint(adiabatic_pfr, Y0, Vspan)
+
+Fa = sol[:, 0]
+T = sol[:, 1]
+
+X = ((Fa - Fa0) * (-1) / Fa0)
+
+plt.subplot(1, 2, 1)
+plt.plot(Vspan, X)
+plt.xlabel('Volume (L)')
+plt.ylabel('Conversion')
+
+plt.subplot(1, 2, 2)
+plt.plot(Vspan, T)
+plt.xlabel('Volume (L)')
+plt.ylabel('Temperature (K)')
+
+plt.tight_layout()
+plt.savefig('images/adiabatic-pfr-1.png')
+#+END_SRC
+
+*** Ambient T HE
+$A \rightarrow B + C$ 
+#+BEGIN_SRC python
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+Fa0 = 0.0376      # mol/s
+Ca0 = 0.0188      # mol / L
+
+v0 = Fa0 / Ca0    # initial volumetric flow
+Ft0 = Fa0
+
+T0 = 1035.0       # K
+
+Hrxn_298 = 80.77  # kJ/mol at 298K
+Cpa = 0.1630      # kJ/mol/K
+Cpb = 0.083
+Cpc = 0.071
+
+Ta = 1080.0       # ambient heat exchanger temperature
+Ua = 0.0165       # overall heat transfer coefficient
+
+def pfr(Y, V):
+    Fa, T = Y  # unpack variables
+
+    extent = (Fa - Fa0) / (-1.0)
+    Fb = extent
+    Fc = extent
+
+    Ft = Fa + Fb + Fc
+
+    v = v0 * Ft / Ft0 * T / T0
+
+    k = np.exp(34.3 - 34222.0 / T)
+    Ca = Fa / v
+    r = k * Ca
+    ra = -r
+    Hrxn = Hrxn_298 + (Cpb + Cpc - Cpa) * (T - 298.0)
+
+    dFadV = ra
+
+    Qdot = Ua * (Ta - T)
+    dTdV = (-Hrxn * r + Qdot) / (Fa * Cpa + Fb * Cpb + Fc * Cpc)
+
+    return [dFadV, dTdV]
+
+
+Vspan = np.linspace(0, 5) # volume in L
+Y0 = [Fa0, T0]
+
+sol = odeint(pfr, Y0, Vspan)
+
+Fa = sol[:, 0]
+T = sol[:, 1]
+
+X = ((Fa - Fa0) * (-1) / Fa0)
+
+plt.subplot(1,2,1)
+plt.plot(Vspan, X)
+plt.xlabel('Volume (L)')
+plt.ylabel('Conversion')
+
+plt.subplot(1,2,2)
+plt.plot(Vspan, T)
+plt.xlabel('Volume (L)')
+plt.ylabel('Temperature (K)')
+
+plt.tight_layout()
+plt.savefig('images/pfr-ambient-heat.png')
+#+END_SRC
+
+*** Cocurrent HE
+$A \rightarrow B + C$ 
+#+BEGIN_SRC python
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+Fa0 = 0.0376      # mol/s
+Ca0 = 0.0188      # mol / L
+
+v0 = Fa0 / Ca0    # initial volumetric flow
+Ft0 = Fa0
+
+T0 = 1035.0       # K
+
+Hrxn_298 = 80.77  # kJ/mol at 298K
+Cpa = 0.1630      # kJ/mol/K
+Cpb = 0.083
+Cpc = 0.071
+
+Tshell0 = 1150.0    # ambient heat exchanger temperature
+Ua = 0.0165         # overall heat transfer coefficient
+mdot = 1.0          # mol/s coolant flow rate
+Cpcoolant = 0.0345  # Heat capacity of coolant
+
+def pfr(Y, V):
+    Fa, T, Tshell = Y  # unpack variables
+
+    extent = (Fa - Fa0) / (-1.0)
+    Fb = extent
+    Fc = extent
+
+    Ft = Fa + Fb + Fc
+
+    v = v0 * Ft / Ft0 * T / T0
+
+    k = np.exp(34.3 - 34222.0 / T)
+    Ca = Fa / v
+    r = k * Ca
+    ra = -r
+    Hrxn = Hrxn_298 + (Cpb + Cpc - Cpa) * (T - 298.0)
+
+    dFadV = ra
+
+    Qdot = Ua * (Tshell - T)
+    dTdV = (-Hrxn * r + Qdot) / (Fa * Cpa + Fb * Cpb + Fc * Cpc)
+    dTshelldV = -Qdot / (mdot * Cpcoolant)
+
+    return [dFadV, dTdV, dTshelldV]
+
+Vspan = np.linspace(0, 5) # volume in L
+Y0 = [Fa0, T0, Tshell0]
+sol = odeint(pfr, Y0, Vspan)
+
+Fa = sol[:, 0]
+T = sol[:, 1]
+Tshell = sol[:, 2]
+X = ((Fa - Fa0) * (-1) / Fa0)
+
+plt.subplot(1,2,1)
+plt.plot(Vspan, X)
+plt.xlabel('Volume (L)')
+plt.ylabel('Conversion')
+
+plt.subplot(1,2,2)
+plt.plot(Vspan, T, label='Tube')
+plt.plot(Vspan, Tshell, label='Shell')
+plt.xlabel('Volume (L)')
+plt.ylabel('Temperature (K)')
+plt.legend(loc='best')
+
+plt.tight_layout()
+plt.savefig('images/pfr-cocurrent-heat.png')
+#+END_SRC
+ITERATE UNTIL Tshell_inlet = T_tube exit 
+#+BEGIN_SRC python
+import numpy as np
+import matplotlib.pyplot as plt
+
+Fa0 = 0.0376      # mol/s
+Ca0 = 0.0188      # mol / L
+
+v0 = Fa0 / Ca0    # initial volumetric flow
+Ft0 = Fa0
+
+T0 = 1035.0       # K
+
+Hrxn_298 = 80.77  # kJ/mol at 298K
+Cpa = 0.1630      # kJ/mol/K
+Cpb = 0.083
+Cpc = 0.071
+
+Tshell0 = 1100.0    # ambient heat exchanger temperature
+Ua = 0.0165         # overall heat transfer coefficient
+mdot = 1.0          # mol/s coolant flow rate
+Cpcoolant = 0.0345  # Heat capacity of coolant
+
+
+def pfr(Y, V):
+    Fa, T, Tshell = Y
+
+    extent = (Fa - Fa0) / (-1.0)
+    Fb = extent
+    Fc = extent
+
+    Ft = Fa + Fb + Fc
+
+    v = v0 * Ft / Ft0 * T / T0
+
+    k = np.exp(34.3 - 34222.0 / T)
+    Ca = Fa / v
+    r = k * Ca
+    ra = -r
+    Hrxn = Hrxn_298 + (Cpb + Cpc - Cpa) * (T - 298.0)
+
+    dFadV = ra
+
+    Qdot = Ua * (Tshell - T)
+    dTdV = (-Hrxn * r + Qdot) / (Fa * Cpa + Fb * Cpb + Fc * Cpc)
+    dTshelldV = Qdot / (mdot * Cpcoolant)
+
+    return [dFadV, dTdV, dTshelldV]
+
+Vspan = np.linspace(0, 5, 100)  # volume in L
+
+# you have to manually iterate on this value until Tshell[-1] == 1250
+#Ta_guess = 1020  # for 0.5 mol/s coolant
+Ta_guess = 1133.5 # for 1 mol/s coolant
+Y0 = [Fa0, T0, Ta_guess]
+
+from scipy.integrate import odeint
+sol = odeint(pfr, Y0, Vspan)
+
+Fa = sol[:, 0]
+T = sol[:, 1]
+Tshell = sol[:, 2]
+print(Tshell[-1])
+X = ((Fa - Fa0) * (-1) / Fa0)
+
+plt.subplot(1, 2, 1)
+plt.plot(Vspan, X)
+plt.xlabel('Volume (L)')
+plt.ylabel('Conversion')
+
+plt.subplot(1, 2, 2)
+plt.plot(Vspan, T, label='Tube')
+plt.plot(Vspan, Tshell, label='Shell')
+plt.xlabel('Volume (L)')
+plt.ylabel('Temperature (K)')
+plt.legend(loc='best')
+
+#+END_SRC
+
+#+RESULTS:
+: 1250.45478895
+
+
+*** Multiple rxns
+\begin{align*}
+A \rightarrow B \\
+2A \rightarrow C
+\end{align*}
+#+BEGIN_SRC python
+import numpy as np
+from scipy.integrate import odeint
+
+Fa0 = 100.0             # mol / s
+Tfeed = 150.0 + 273.15  # feed temperature
+Cafeed = 0.1            # mol / L
+
+Ft0 = Fa0
+
+v0 = Fa0 / Cafeed
+
+# reaction properties
+Hrx1 = -20.0  # kJ / mol A
+Hrx2 = -60.0  # kJ / mol A
+
+Cpa = 0.090
+Cpb = 0.090
+Cpc = 0.180
+
+Ua = 4      # kJ / L / s /K
+Ta = 373.0  # K
+
+E1R = 4000.0  # K at 300 K
+E2R = 9000.0
+
+
+def pfr(Y, V):
+    Fa, Fb, Fc, T = Y
+    Ft = Fa + Fb + Fc
+
+    k1a = 10.0 * np.exp(-E1R * (1.0 / T - 1.0 / 300.0))
+    k2a = 0.09 * np.exp(-E2R * (1.0 / T - 1.0 / 300.0))
+
+    v = v0 * (Ft / Ft0) * (T / Tfeed)
+    Ca = Fa / v
+
+    r1a = -k1a * Ca
+    r2a = -k2a * Ca**2
+
+    r1 = -r1a
+    r2 = r2a / -2.0
+
+    ra = -r1 - 2 * r2
+    rb = r1
+    rc = r2
+
+    dFadV = ra
+    dFbdV = rb
+    dFcdV = rc
+
+    dTdV = ((r1 * -Hrx1   # heat from rxn 1
+             + 2 * r2 * -Hrx2  # heat from rxn 2
+             + Ua * (Ta - T))  # Qdot
+             / (Fa * Cpa + Fb * Cpb + Fc * Cpc))
+    return [dFadV, dFbdV, dFcdV, dTdV]
+
+Y0 = [Fa0, 0.0, 0.0, Tfeed]
+Vspan = np.linspace(0, 1)
+sol = odeint(pfr, Y0, Vspan)
+
+Fa = sol[:, 0]
+Fb = sol[:, 1]
+Fc = sol[:, 2]
+T = sol[:, 3]
+
+import matplotlib.pyplot as plt
+plt.subplot(1, 2, 1)
+plt.plot(Vspan, Fa, Vspan, Fb, Vspan, Fc)
+plt.xlabel('Volume (L)')
+plt.ylabel('Molar flow (mol/s)')
+plt.legend(['Fa', 'Fb', 'Fc'], loc='best')
+
+plt.subplot(1, 2, 2)
+plt.plot(Vspan, T)
+plt.xlabel('Volume (L)')
+plt.ylabel('Temperature (K)')
+plt.tight_layout()
+plt.savefig('haha.png')
+plt.show()
+#+END_SRC
+
+#+RESULTS:
+
+* Internal effectiveness stuff
+** Practice Problem 
+A first-order heterogeneous, irreversible reaction is taking place within a spherical catalyst pellet coated with catalyst. The reactant concentration halfway  between the outer surface and the center of the pellet (r = R/2) is equal to 1/10th of the surface concentration. The surface concentration is 0.001 mol / L, the particle diameter is 2e-3 cm, and the diffusion coefficient is 0.1 cm^2 / s.
+a) Estimate the effectiveness factor of this catalyst particle
+b) What diameter should the particle be decreased to get an effectiveness factor of 0.8. Provide an assessment of your answer.
+
+De= 0.1 cm^2/s
+R= 1.5e-3 cm
+Ca,s = 0.001 mol/L
+Ca(at r=R/2) = 0.1 Ca,s
+
+\(\overline{c}(\overline{r}) = \frac{3}{\overline{r}} \frac{\sinh \Phi \overline{r}}{\sinh 3 \Phi}  \) (1)
+
+\( \eta = \frac{1}{\Phi}  \left [\frac{1}{\tanh 3 \Phi} - \frac{1}{3 \Phi} \right]\) (2)
+
+ $a = R/3$
+
+ $\overline{r} = r/a$ and $\overline{c} = C_A / C_{As}$.
+
+$\Phi = \sqrt{\frac{k a^2}{D_A,}}$ 
+
+1)Solve the first equation to get phi.
+2)Use Equation 2 to calculate the effectiveness factor.
+
+#+BEGIN_SRC python
+import numpy as np
+
+De = 0.1 # cm^2/s
+R0 =  2e-3 / 2 # cm
+CAs = 1e-3 # mol/L
+CA = 0.1 * CAs
+
+def Phi(k, R):
+    return (k * (R / 3) ** 2 / De) ** 0.5
+
+def eta(Phi):
+    return 1.0 / Phi * (1.0 / np.tanh(3 * Phi) - 1.0 / (3 * Phi))
+
+def thiele(k):
+         #(R/2)/(R/3) , a= R/3
+    rbar = (1/2)/(1/3)
+    Cbar = CA / CAs
+    Phi0 = Phi(k, R0)
+    return 3 * np.sinh(Phi0 * rbar) / rbar / np.sinh(3 * Phi0) - Cbar
+
+from scipy.optimize import fsolve
+
+k, = fsolve(thiele, 1)
+eta0 = eta(Phi(k, R0))
+
+print('The effectivness factor is $\eta$ = {0:1.5f}'.format(eta0))
+
+etaw=0.8
+
+def diameter(D):
+    R = D / 2
+    return eta(Phi(k, R)) - etaw
+
+D, = fsolve(diameter, 0.01)
+print ('To get an effectiveness factor of eta = {0}, the diameter of the particle should be decreased to {1:1.5}cm'.format(etaw,D))
+#+END_SRC
+
+#+RESULTS:
+: The effectivness factor is $\eta$ = 0.41743
+: To get an effectiveness factor of eta = 0.8, the diameter of the particle should be decreased to 0.00068223cm
+
+
+1. Sphere \( \eta = \frac{1}{\Phi}  \left [\frac{1}{\tanh 3 \Phi} - \frac{1}{3 \Phi} \right]\)
+2. Cylinder \( \eta = \frac{1}{\Phi} \frac{I_1(2 \Phi)}{I_0(2\Phi)}   \)
+3. Slab \( \frac{\tanh \Phi}{\Phi} \)
+
+
+#+BEGIN_SRC python :results output org drawer
+eta_sphere = 1.0 / Phi * (1.0 / np.tanh(3 * Phi) - 1.0 / (3 * Phi))
+eta_cylinder = 1 / Phi * iv(1, 2 * Phi) / iv(0, 2 * Phi)
+eta_slab = np.tanh(Phi) / Phi
+#+END_SRC
+
+- Particle shape effects are relatively small (e.g. a 20% effect)
+
+- We can reasonably estimate \eta by choosing an appropriate Thiele modulus definition for the situation with \( \eta = \frac{1}{\Phi}  \left [\frac{1}{\tanh 3 \Phi} - \frac{1}{3 \Phi} \right]\)
+
+ + for power law kinetics we use \( \Phi = \sqrt{\frac{n+1}{2} \frac{k c_{As}^{n-1} a^2}{D_A} } \)
+
+ + For Hougen-Watson kinetics we use \( \Phi = \left(\frac{\phi}{1 + \phi} \right) \sqrt{\frac{k \overline{c}_m K_A a^2}{2 D_A(\phi - \ln(1+\phi))}} \)
+
+#+RESULTS:
+:RESULTS:
+Weight of Carbon catalyst is 68571.42857142858g.
+[ 0.          2.04081633]
+:END:
+
